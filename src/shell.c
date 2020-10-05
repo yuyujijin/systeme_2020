@@ -47,10 +47,8 @@ int main(){
 
     /* compare first args of words array with every function known */
     int found = 0;
-    for(int i = 0; i < argc; i++){
-      for(int j = 0; j < CMDS_NBR; j++){
-        if(strcmp(args[i],commands[j]) == 0){ found = 1; commands_func[j](); }
-      }
+    for(int j = 0; j < CMDS_NBR; j++){
+      if(strcmp(args[0],commands[j]) == 0){ found = 1; commands_func[j](); }
     }
 
     /* in case we didnt find anything */
@@ -100,8 +98,7 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
       (*argc)++; i++;
       l = 0;
     }
-    l++;
-    i++;
+    l++;i++;
   }
 
   return words;
