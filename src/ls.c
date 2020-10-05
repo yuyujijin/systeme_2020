@@ -32,3 +32,10 @@ int ls(char *path,int option){//option=1 --> ls -l     option=0 --> ls
   closedir(dir);
   return 0;
 }
+
+ls_tar(char *path,int option){//we use this function to deal with tar file
+  /*
+    TO DO :
+      use the struct header of a tar file done in tp1 with low-level programming
+  */
+}
