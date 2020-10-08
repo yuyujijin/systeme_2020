@@ -29,7 +29,6 @@ int ls(char *path,int option){//option=1 --> ls -l     option=0 --> ls
         struct group *gid=getgrgid(info.st_gid);//to get the gid name because info.st_gid only gives us an int
         struct passwd *uid=getpwuid(info.st_uid);//same
         struct tm *date=gmtime(&info.st_mtime);//to get the date displaied as such: mmm ddd hh:minmin from st_ctime because st_ctime is a long int
-        //(int)log10(info.st_size) gives us the number of digit of st_size in base 10;
         int size=7+2+strlen(uid->pw_name)+strlen(gid->gr_name)+nbDigit(info.st_size)+3+2+2+strlen(entry->d_name);
         char line[size+10];//we store the line to be written and add +10 for every space etc
 
