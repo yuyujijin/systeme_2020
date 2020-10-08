@@ -31,7 +31,6 @@ int ls(char *path,int option){//option=1 --> ls -l     option=0 --> ls
         struct tm *date=gmtime(&info.st_mtime);//to get the date displaied as such: mmm ddd hh:minmin from st_ctime because st_ctime is a long int
         int size=7+2+strlen(uid->pw_name)+strlen(gid->gr_name)+nbDigit(info.st_size)+3+2+2+strlen(entry->d_name);
         char line[size+10];//we store the line to be written and add +10 for every space etc
-
         if(snprintf(line,sizeof(line),"%08o %ld %s %s %ld %s. %02d:%02d %s", //we write the data from stat on the line
           info.st_mode,info.st_nlink,uid->pw_name,gid->gr_name,
           info.st_size,month[date->tm_mon],date->tm_hour,date->tm_min,entry->d_name)<0)return-1;
