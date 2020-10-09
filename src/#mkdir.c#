@@ -18,8 +18,8 @@ int mkDirectory(const char* argv)
       exit(EXIT_FAILURE);
     }
 
-    if(mkdir(path, 0755) == -1)
-      perror("mkdir");
+  if(mkdir(path, 0755) == -1)
+    perror("mkdir");
   
   return 0;
 
