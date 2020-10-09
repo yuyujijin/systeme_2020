@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
 
 int mkDirectory(const char* argv)
 {
@@ -14,7 +15,8 @@ int mkDirectory(const char* argv)
   struct stat stDir;
   if(stat(path, &stDir) !=-1)//if the directory exists
     {
-      perror("mkdir");
+      errno=17;
+      perror("mkdir: impossible de creer le repertoire");
       exit(EXIT_FAILURE);
     }
 
