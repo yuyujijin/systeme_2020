@@ -2,6 +2,7 @@
 ## How does <x> works?
 **shell.c** : Read a line from STDIN, cut the words contained by this line, and put in a array of string. It then compare its first arguments _(so the cmd name)_ to every know functions, and call it if it matchs.
 **pwd.c** : pwd just returns the actual cwd, so the path from root folder.
+**tar_manipulation.c** : contains addTar(...) which read input from STDIN and add in a tar (must specify the path). The tar stay unarchived and still function (can be unarchived like always)
 
 ## How should we implement <x>?
 **tarballs as _directory_** :
