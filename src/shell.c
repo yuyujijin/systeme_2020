@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mkDir.h>
 
 int MAX_SIZE = 256;
 
@@ -15,6 +16,7 @@ char* read_line();
 /* two placeholder functions */
 void cd();
 void ls();
+void mkDir();
 
 /* number of functions availabe */
 int CMDS_NBR = 2;
@@ -24,7 +26,7 @@ char *commands[] = {"cd","ls"};
 ~ not really at ease with this syntax right now, found it on here
 https://stackoverflow.com/questions/252748/how-can-i-use-an-array-of-function-pointers
 i'll inform myself more about it ~ */
-void (*commands_func[])() = {&cd,&ls};
+void (*commands_func[])() = {&cd,&ls,&mkDir};
 
 int main(){
   size_t size;

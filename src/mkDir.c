@@ -1,12 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include<limits.h>
-#include <dirent.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
+#include "mkDir.h"
 
 char *substr(const char *src,int start,int end) { 
   char *dest=NULL;
@@ -58,11 +50,9 @@ int splitMkDir(const char* argv)
   int end;
   while(start<strlen(argv))
     {
-      printf("%ld\n",strlen(argv));
       end=nextSpace(argv, start);
       mkDirectory(substr(argv,start,end));
       start=end+1;
-      printf("start:%d end:%d\n",start,end);
     }
 }
 
