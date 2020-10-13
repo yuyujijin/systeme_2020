@@ -155,9 +155,13 @@ int rmTar(char *path, char *name){
       memset(rd_buf,'\0',BLOCKSIZE);
     }
     close(fd_pipe[0]);
-    close(fd);
     break;
   }
+
+  /* We must now truncate the end of the file (remove empty blocks left) */
+  int tarsize = lseek(fd, 0, SEEK_END);
+  if(ftruncate(fd, tarsize - (1 + s) * BLOCKSIZE) < 0) return -1;
+  close(fd);
 
   sprintf(err,"Le fichier %s a été supprimé avec succès de l'archive %s\n",name,path);
   write(1,err,strlen(err));
