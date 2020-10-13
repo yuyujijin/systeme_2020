@@ -1,23 +1,4 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include "tar.h"
-
-
-/* check for every header of a tar file if its checksum is correct */
-int isTar(char*);
-
-/* returns the offset of the first empty block */
-size_t offsetTar(char *path);
-
-/* reads from stdin and adds it to a tar */
-int addTar(char *path, char name[100],  char typeflag);
-
-int isEmpty(struct posix_header*);
+#include "tar_manipulation.h"
 
 int addTar(char *path, char *name, char typeflag){
   int fd;
@@ -81,7 +62,108 @@ int addTar(char *path, char *name, char typeflag){
 
   close(fd);
 
-  return 0;
+  return 1;
+}
+
+int rmTar(char *path, char *name){
+  struct posix_header tampon;
+  int fd;
+  char err[256];
+
+  /* if the file doesnt exist (or cant be opened), then its not a tar */
+  fd = open(path,O_RDONLY);
+  if(fd < 0) return 0;
+
+  int s = 0;
+  int offset = 0;
+
+  while(1){
+    /* create the buffer to read the header */
+    size_t size = read(fd, &tampon, sizeof(struct posix_header));
+
+    /* if its empty, we stop */
+    if(isEmpty(&tampon)){
+      sprintf(err,"Le fichier %s n'appartient pas à l'archive %s\n",name,path);
+      write(1,err,strlen(err));
+      return 0;
+    };
+
+    /* if checksum fails, then its not a proper tar */
+
+    /* we get the size of the file for this header */
+    int filesize;
+    sscanf(tampon.size,"%o", &filesize);
+
+    /* and size of its blocs */
+    s = (filesize + 512 - 1)/512;
+
+    if(strcmp(tampon.name,name) == 0) break;
+
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+    offset += (s + 1) * BLOCKSIZE;
+  }
+
+  offset = (offset > 0)? offset - BLOCKSIZE : 0;
+
+  /* We're then gonna use a pipe in order to move data */
+
+  int rd_offset = offset + (1 + s) * BLOCKSIZE;
+
+  close(fd);
+
+  int fd_pipe[2];
+  pipe(fd_pipe);
+
+  char rd_buf[BLOCKSIZE];
+  memset(rd_buf,'\0',BLOCKSIZE);
+
+  switch(fork()){
+    case -1: return -1;
+    /* son, reading data in file, writing them in the pipe */
+    case 0:
+    fd = open(path, O_RDONLY);
+    if(fd < 0) return -1;
+    lseek(fd,rd_offset,SEEK_SET);
+
+    /* no need to read in the pipe */
+    close(fd_pipe[0]);
+
+    while((read(fd, rd_buf, BLOCKSIZE)) > 0){
+      if(write(fd_pipe[1], rd_buf, BLOCKSIZE) < 0) return -1;
+      memset(rd_buf,'\0',BLOCKSIZE);
+    }
+    close(fd_pipe[1]);
+    close(fd);
+
+    /* the son leaves here */
+    exit(0);
+    break;
+
+    /* father, reading data in the pipe, writing them in the file */
+    default:
+    fd = open(path,O_WRONLY);
+    if(fd < 0) return -1;
+    lseek(fd,offset,SEEK_SET);
+
+    /* no need to write in the pipe */
+    close(fd_pipe[1]);
+
+    while((read(fd_pipe[0], rd_buf, BLOCKSIZE)) > 0){
+      if(write(fd, rd_buf, BLOCKSIZE) < 0) return -1;
+      memset(rd_buf,'\0',BLOCKSIZE);
+    }
+    close(fd_pipe[0]);
+    close(fd);
+    break;
+  }
+
+  sprintf(err,"Le fichier %s a été supprimé avec succès de l'archive %s\n",name,path);
+  write(1,err,strlen(err));
+
+  return 1;
+
 }
 
 int isEmpty(struct posix_header* p){
@@ -106,6 +188,8 @@ int isTar(char* path){
 
     /* if checksum fails, then its not a proper tar */
     if(check_checksum(&tampon) == 0) return 0;
+
+    printf("%s\n",tampon.name);
 
     /* we get the size of the file for this header */
     int filesize;
