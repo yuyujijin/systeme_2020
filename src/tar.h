@@ -1,4 +1,22 @@
-
+#ifndef TAR_H
+#define TAR_H
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <grp.h>
+#include <pwd.h>
+#include<sys/wait.h>
+#include <time.h>
+#include <dirent.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <math.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 /* tar Header Block, from POSIX 1003.1-1990.  */
 
 #define BLOCKSIZE 512
@@ -66,3 +84,39 @@ int check_checksum(struct posix_header *hd) {
   for (int i=0;i<8;i++) { sum += ' ' - hd->chksum[i]; }
   return (checksum == sum);
 }
+
+
+/*
+  Read all the information from the tarballs
+  and return a struct posix header containing them
+*/
+struct posix_header* posix_header_from_tarFile(const char *path){
+  int f=open(path,O_RDONLY);
+  struct posix_header *p=malloc(sizeof(struct posix_header));
+  if(f<0){
+    perror(path);
+    return NULL;
+  }
+  if(read(f,p->name,100)<0)return NULL;;
+  if(read(f,p->mode,8)<0)return NULL;
+  if(read(f,p->uid,8)<0)return NULL;
+  if(read(f,p->gid,8)<0)return NULL;
+  char size[12];
+  if(read(f,size,12)<0)return NULL;
+  unsigned int filesize= strtol(size,NULL,8);
+  sprintf(p->size,"%011o",filesize);
+  if(read(f,p->mtime,12)<0)return NULL;
+  if(read(f,p->chksum,8)<0)return NULL;
+  if(read(f,&p->typeflag,1)<0)return NULL;
+  if(read(f,p->linkname,100)<0)return NULL;
+  if(read(f,p->magic,6)<0)return NULL;
+  if(read(f,p->version,2)<0)return NULL;
+  if(read(f,p->uname,32)<0)return NULL;
+  if(read(f,p->gname,32)<0)return NULL;
+  if(read(f,p->devmajor,8)<0)return NULL;
+  if(read(f,p->devminor,8)<0)return NULL;
+  if(read(f,p->prefix,155)<0)return NULL;
+  if(read(f,p->junk,12)<0)return NULL;
+  return p;
+}
+#endif

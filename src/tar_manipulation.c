@@ -1,4 +1,5 @@
 #include "tar_manipulation.h"
+#include "tar.h"
 
 int addTar(char *path, char *name, char typeflag){
   int fd;
@@ -231,4 +232,13 @@ size_t offsetTar(char *path){
   close(fd);
 
   return offset;
+}
+int* has_Tar(char *const args[],int argc){
+  int result[argc];
+  for(int i=0;i<argc;i++){
+    if(isTar(args[i])){
+      result[i]=1;
+    }
+  }
+  return result;
 }

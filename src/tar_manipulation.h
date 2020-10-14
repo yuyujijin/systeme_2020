@@ -1,3 +1,5 @@
+#ifndef TAR_MANIPULATION_H
+#define TAR_MANIPULATION_H
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -21,3 +23,11 @@ int addTar(char *path, char name[100],  char typeflag);
 int rmTar(char *path, char *name);
 
 int isEmpty(struct posix_header*);
+
+/*
+  Verify if any of the path in args is a tar, if it is, it adds its position in args to an int[]
+  We return this int[] so that we can use it later
+*/
+
+int* has_Tar(char *const args[],int argc);// uses int isTar(char*) method
+#endif
