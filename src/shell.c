@@ -2,36 +2,38 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
-int MAX_SIZE = 256;
+#define MAX_SIZE 256
+#define BOLDGREEN "\e[1;32m"
+#define BOLDBLUE "\e[1;34m"
+#define RESET "\e[0m"
 
 /* str_cut takes a input string of size length, and returns a array of string containing
 the sub-string of input_str delimited by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char token,size_t length, int* argc);
 
+/* execute cmd argv[0] with its args */
+int execute_cmd(char **argv);
+
 /* read_line read the next line from stdin */
 char* read_line();
 
-/* two placeholder functions */
-void cd();
-void ls();
-
-/* number of functions availabe */
-int CMDS_NBR = 2;
-/* name of functions availabe, both array have similare index for same func */
-char *commands[] = {"cd","ls"};
-/* array of functions available
-~ not really at ease with this syntax right now, found it on here
-https://stackoverflow.com/questions/252748/how-can-i-use-an-array-of-function-pointers
-i'll inform myself more about it ~ */
-void (*commands_func[])() = {&cd,&ls};
 
 int main(){
   size_t size;
   char* line;
 
+  /* environnement variable that store the additional path */
+  setenv("TARPATH","\0",1);
+
   while(1){
-    write(1,"$ ",1);
+    char bgnline[256];
+    char *cwd = getcwd(NULL, 0);
+    sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
+
+    write(1,bgnline,strlen(bgnline));
+
 
     /* read next line */
     line = read_line();
@@ -42,17 +44,9 @@ int main(){
     char **args = str_cut(line,' ', strlen(line), &argc);
     if(args == NULL) return -1;
 
-    /* exit option */
     if(strcmp(args[0],"exit") == 0) exit(0);
 
-    /* compare first args of words array with every function known */
-    int found = 0;
-    for(int j = 0; j < CMDS_NBR; j++){
-      if(strcmp(args[0],commands[j]) == 0){ found = 1; commands_func[j](); }
-    }
-
-    /* in case we didnt find anything */
-    if(!found && strlen(args[0]) > 0) printf("Commande %s non reconnue\n",args[0]);
+    if(execute_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
 
   }
   return 0;
@@ -89,6 +83,8 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
       char *w = malloc(sizeof(char) * l + 1);
       if(w == NULL) return NULL;
 
+      memset(w,'\0', sizeof(char) * l + 1);
+
       strncat(w, input_str + i - l, l);
       strcat(w, "\0");
 
@@ -101,9 +97,25 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
     l++;i++;
   }
 
+  words = realloc(words, (*argc + 1) * sizeof(char*));
+
   return words;
 }
 
-/* placeholder funcs */
-void cd(){ printf("commande tapée : cd\n"); }
-void ls(){ printf("commande tapée : ls\n"); }
+int execute_cmd(char **argv){
+  int found, w;
+
+  int r = fork();
+  /* exit option */
+  switch(r){
+    case -1 : return -1;
+    case 0 :
+    found = execvp(argv[0], argv);
+    if(found < 0) return -1;
+    return 1;
+    default :
+    wait(&w); break;
+  }
+
+  return 1;
+}
