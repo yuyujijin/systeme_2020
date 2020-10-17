@@ -24,6 +24,9 @@ int main(){
   size_t size;
   char* line;
 
+  /* environnement variable that store the additional path */
+  setenv("TARPATH","\0",1);
+
   while(1){
     char bgnline[256];
     char *cwd = getcwd(NULL, 0);
