@@ -194,7 +194,6 @@ int isTar(char* path){
     /* if checksum fails, then its not a proper tar */
     if(check_checksum(&tampon) == 0) return 0;
 
-    printf("%s\n",tampon.name);
 
     /* we get the size of the file for this header */
     int filesize;
@@ -233,12 +232,88 @@ size_t offsetTar(char *path){
 
   return offset;
 }
-int* has_Tar(char *const args[],int argc){
-  int result[argc];
+void has_Tar(char *const args[],int argc,int *tarIndex){
   for(int i=0;i<argc;i++){
-    if(isTar(args[i])){
-      result[i]=1;
+    if(strstr(args[i],".tar")){//just check that the path has a tar in it
+      tarIndex[i]=1;
     }
   }
+}
+
+char* get_tar_from_full_path(const char * path){
+  char *subpath=strstr(path,".tar");
+  if(subpath==NULL)return NULL;
+  int size=strlen(path)-strlen(subpath)+4;
+  char *result=malloc(size+1);
+  strncpy(result,path,size);
+  result[size]='\0';
   return result;
+}
+
+struct posix_header** posix_header_from_tarFile(const char *path){
+  int directory=0;
+  char *directory_name;//won't be used if directory==0
+  int source=is_source(path);
+  char *tar_path=get_tar_from_full_path(path);
+  /*If directory==1 then we are returning all the file inside path(a directory) which is inside the tar */
+  /*If file==1 then we are only returning the posix_header of a file with the path name*/
+  /*If both are zero then we are returning all the file inside "a.tar/." */
+  int fd=open(tar_path,O_RDONLY);
+  if(fd<0)return NULL;
+  int index=0;
+  /* if the file doesnt exist (or cant be opened), then its not a tar */
+  struct posix_header** result=malloc(sizeof(struct posix_header));//only 1 header in the beginning
+  while(1){
+    struct posix_header *tampon=malloc(sizeof(struct posix_header));
+    if(read(fd, tampon, sizeof(struct posix_header))<0)return NULL;
+
+    /* if its empty, we stop */
+    if(isEmpty(tampon)) break;
+    if(source==0&&strcmp(tampon->name,strstr(path,".tar/")+5)==0){
+      if(tampon->typeflag==53){//on my computer a directory has the value 53 weird ...
+        directory_name=tampon->name;
+        directory=1;
+      }else if(tampon->typeflag==48){//we only want this file
+        free(result);
+        result=malloc(sizeof(struct posix_header));
+        result[0]=tampon;
+        return result;
+      }
+    }
+    /* we get the size of the file for this header */
+    int filesize;
+    sscanf(tampon->size,"%o", &filesize);
+
+    /* and size of its blocs */
+    int s = (filesize + 512 - 1)/512;
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+    if(directory==1&&strcmp(directory_name,tampon->name)!=0&&strstr(tampon->name,directory_name)!=NULL){
+      //we check for every file such as directory_name/.../tampon->name and excludes the directorty itself
+      //now we check that we are in directory_name/tampon->name
+      char *a=strstr(tampon->name,directory_name)+strlen(directory_name);//"a/b/c"->"b/c" if a is directory_name
+      char *b=strrchr(tampon->name,'/')+1;//"a/b/c"->c if a is the directory_name and c is a file, if c is a directory "a/b/c/" -> '\0'
+      if(strcmp(a,b)==0||b[0]=='\0'){
+        result=realloc(result,sizeof(struct posix_header)+sizeof(result));
+        if(result==NULL)return NULL;
+        result[index]=tampon;
+        index++;
+      }
+    }else if(source==1){
+      //we only want the file like a.tar/b not a.tar/.../b
+      if(strstr(tampon->name,"/")==NULL||strlen(strstr(tampon->name,"/"))==1){
+        result=realloc(result,sizeof(struct posix_header)+sizeof(result));
+        if(result==NULL)return NULL;
+        result[index]=tampon;
+        index++;
+      }
+    }
+  }
+  close(fd);
+  return result;
+}
+
+int is_source(const char* path){
+  return (strcmp(path+strlen(path)-4,strstr(path,".tar"))==0||strcmp(path+strlen(path)-5,strstr(path,".tar/"))==0);
 }
