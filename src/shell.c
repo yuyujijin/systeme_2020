@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "ls.h"
 int MAX_SIZE = 256;
 
 /* str_cut takes a input string of size length, and returns a array of string containing
@@ -14,7 +14,7 @@ char* read_line();
 
 /* two placeholder functions */
 void cd();
-void ls();
+void ls(char *const args[],int argc);
 
 /* number of functions availabe */
 int CMDS_NBR = 2;
@@ -48,7 +48,7 @@ int main(){
     /* compare first args of words array with every function known */
     int found = 0;
     for(int j = 0; j < CMDS_NBR; j++){
-      if(strcmp(args[0],commands[j]) == 0){ found = 1; commands_func[j](); }
+      if(strcmp(args[0],commands[j]) == 0){ found = 1; commands_func[j](args, argc); }
     }
 
     /* in case we didnt find anything */
@@ -106,4 +106,4 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
 
 /* placeholder funcs */
 void cd(){ printf("commande tapée : cd\n"); }
-void ls(){ printf("commande tapée : ls\n"); }
+void ls(char *const args[],int argc){ls_call(args,argc); }
