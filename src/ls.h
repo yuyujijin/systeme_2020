@@ -11,8 +11,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
 #include <math.h>
+#include <string.h>
 #include "tar.h"
 #include "tar_manipulation.h"
 int ls(char *const args[],int argc);
@@ -20,4 +20,6 @@ int has_option(char *const args[],int argc);
 int has_option(char *const args[],int argc);
 int ls_tar(const char *args,int option);
 int ls_tar_option(struct posix_header* posix_header);
+int maxNbDigit(struct posix_header** posix_header);
+void convert_stmode(struct posix_header* posix_header,char mode[]);
 #endif

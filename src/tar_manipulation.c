@@ -262,7 +262,7 @@ struct posix_header** posix_header_from_tarFile(const char *path){
   if(fd<0)return NULL;
   int index=0;
   /* if the file doesnt exist (or cant be opened), then its not a tar */
-  struct posix_header** result=malloc(sizeof(struct posix_header));//only 1 header in the beginning
+  struct posix_header** result=NULL;//only 1 header in the beginning
   while(1){
     struct posix_header *tampon=malloc(sizeof(struct posix_header));
     if(read(fd, tampon, sizeof(struct posix_header))<0)return NULL;
@@ -301,7 +301,7 @@ struct posix_header** posix_header_from_tarFile(const char *path){
         index++;
       }
     }else if(source==1){
-      //we only want the file like a.tar/b not a.tar/.../b
+      //we only want the file(folder) like a.tar/b not a.tar/.../b
       if(strstr(tampon->name,"/")==NULL||strlen(strstr(tampon->name,"/"))==1){
         result=realloc(result,sizeof(struct posix_header)+sizeof(result));
         if(result==NULL)return NULL;
