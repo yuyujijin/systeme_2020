@@ -2,7 +2,7 @@
 #include "tar_manipulation.h"
 #include "tar.h"
 char *month[]={"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"};
-int ls(char *const args[],int argc){
+int ls_call(char *const args[],int argc){
   int fork_ls=fork();
   switch (fork_ls) {
     case -1/* value */:perror("fork");exit(EXIT_FAILURE);
@@ -17,6 +17,10 @@ int ls(char *const args[],int argc){
           }
         }
         for(int i=1;i<argc;i++){//since args={"ls",args[0]....args[argc]} so we start with i=1
+          if(((argc>2&&option<0)||argc>3)&&option!=i){
+            if(write(1,args[i],strlen(args[i]))<0)return -1;
+            if(write(1,":\n ",2)<0)return -1;
+          }
           //if we're working with a regular path
           if(tarIndex[i]==0){
             switch(fork()){
@@ -27,6 +31,7 @@ int ls(char *const args[],int argc){
                 }else if(i!=option&&execlp("ls","ls","-l",args[i],NULL)<0){
                   perror(args[i]);
                 }
+                if(write(1,"\n",1)<0)return -1;
                 exit(EXIT_SUCCESS);
                 break;
               default :wait(NULL);break;
@@ -39,6 +44,7 @@ int ls(char *const args[],int argc){
               write(1,args[i],sizeof(args[i]));
               write(1,"': Aucun fichier ou dossier de ce type\n",39);
             }
+            if(write(1,"\n",1)<0)return -1;
           }
         }
         exit(EXIT_SUCCESS);
