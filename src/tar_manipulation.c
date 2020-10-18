@@ -254,6 +254,9 @@ struct posix_header** posix_header_from_tarFile(const char *path){
   int directory=0;
   char *directory_name;//won't be used if directory==0
   int source=is_source(path);
+  char altpath[sizeof(path)+1];//we do this cause we want path to be a.tar/b/c/ and not a.tar/b/c for the case of folder
+  strcpy(altpath,path);
+  strcat(altpath,"/");
   char *tar_path=get_tar_from_full_path(path);
   /*If directory==1 then we are returning all the file inside path(a directory) which is inside the tar */
   /*If file==1 then we are only returning the posix_header of a file with the path name*/
@@ -269,7 +272,11 @@ struct posix_header** posix_header_from_tarFile(const char *path){
 
     /* if its empty, we stop */
     if(isEmpty(tampon)) break;
-    if(source==0&&strcmp(tampon->name,strstr(path,".tar/")+5)==0){
+
+    if(source==0&&(strcmp(tampon->name,strstr(path,".tar/")+5)==0||strcmp(tampon->name,strstr(altpath,".tar/")+5)==0)){
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!! If you find a bug it might be here, the typeflag on my computer has a weird behavior !!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       if(tampon->typeflag==53){//on my computer a directory has the value 53 weird ...
         directory_name=tampon->name;
         directory=1;
@@ -289,9 +296,11 @@ struct posix_header** posix_header_from_tarFile(const char *path){
     /* we read them if order to "ignore them" (we SHOULD use seek here) */
     char temp[s * BLOCKSIZE];
     read(fd, temp, s * BLOCKSIZE);
+
+    //we check for every file such as directory_name/.../tampon->name and excludes the directorty itself
+    //if the folder name is in the name basically //
     if(directory==1&&strcmp(directory_name,tampon->name)!=0&&strstr(tampon->name,directory_name)!=NULL){
-      //we check for every file such as directory_name/.../tampon->name and excludes the directorty itself
-      //now we check that we are in directory_name/tampon->name
+      //now we check that we are in directory_name/tampon->name and not directory_name/...../tampon->name
       char *a=strstr(tampon->name,directory_name)+strlen(directory_name);//"a/b/c"->"b/c" if a is directory_name
       char *b=strrchr(tampon->name,'/')+1;//"a/b/c"->c if a is the directory_name and c is a file, if c is a directory "a/b/c/" -> '\0'
       if(strcmp(a,b)==0||b[0]=='\0'){
