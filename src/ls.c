@@ -11,6 +11,11 @@ int ls(char *const args[],int argc){
         int option=has_option(args,argc);
         int* tarIndex=malloc(sizeof(int)*argc);
         has_Tar(args,argc,tarIndex);
+        if(argc==1){
+          if(execlp("ls","ls",NULL)<0){
+            perror("ls");
+          }
+        }
         for(int i=1;i<argc;i++){//since args={"ls",args[0]....args[argc]} so we start with i=1
           //if we're working with a regular path
           if(tarIndex[i]==0){
@@ -126,10 +131,4 @@ void convert_stmode(struct posix_header* posix_header,char mode[]){//0000644 -> 
     case '1':mode[7]='-';mode[8]='-';mode[9]='x';break;
   }
   mode[10]='\0';
-}
-
-int main(int argc, char const *argv[]){
-  char * const c[]={"ls","a.tar/k","b","a.tar","c"};
-  ls(c,5);
-  return 0;
 }
