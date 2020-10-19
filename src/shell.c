@@ -16,8 +16,14 @@ char** str_cut(char *input_str, char token,size_t length, int* argc);
 /* execute cmd argv[0] with its args */
 int execute_cmd(char **argv);
 
+/* same w/ tar */
+int execute_tar_cmd(char **argv);
+
 /* read_line read the next line from stdin */
 char* read_line();
+
+/* this function check if one of the args is looking INSIDE a tar */
+int one_of_args_is_tar(char **argv, int argc);
 
 
 int main(){
@@ -25,19 +31,18 @@ int main(){
   char* line;
 
   /* environnement variable that store the additional path */
-  setenv("TARPATH","\0",1);
+  setenv("TARPATH","",1);
 
   while(1){
     char bgnline[256];
     char *cwd = getcwd(NULL, 0);
     sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
 
-    write(1,bgnline,strlen(bgnline));
-
+    write(STDIN_FILENO,bgnline,strlen(bgnline));
 
     /* read next line */
     line = read_line();
-    if(line == NULL) return -1;
+    if(line == NULL) break;
 
     /* cut it in words array with space char delimiter */
     int argc;
@@ -46,9 +51,15 @@ int main(){
 
     if(strcmp(args[0],"exit") == 0) exit(0);
 
-    if(execute_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
-
+    /* in case we're in a tarball */
+    if(strstr(getenv("TARPATH"),".tar") != NULL || one_of_args_is_tar(args + 1, argc -1)){
+      if(execute_tar_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
+    }else{
+      if(execute_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
+    }
   }
+
+  write(STDIN_FILENO,"\n",2);
   return 0;
 }
 
@@ -57,7 +68,7 @@ char *read_line(){
   size_t size;
 
   size = read(0,buf,MAX_SIZE);
-  if(size < 0) return NULL;
+  if(size <= 0) return NULL;
 
   /* take just the red part, store it in s and concatenate '\0' */
   char* s = malloc(sizeof(char) * size + 1);
@@ -118,4 +129,35 @@ int execute_cmd(char **argv){
   }
 
   return 1;
+}
+
+int execute_tar_cmd(char **argv){
+  int found, w;
+
+  char* new_argv0 = malloc(sizeof(char) * (strlen(argv[0]) + 2 + 1));
+  memset(new_argv0,'\0',(strlen(argv[0]) + 7 + 1));
+  strcat(new_argv0,"cmds/./");
+  strcat(new_argv0,argv[0]);
+  argv[0] = new_argv0;
+
+  int r = fork();
+  /* exit option */
+  switch(r){
+    case -1 : return -1;
+    case 0 :
+    found = execvp(argv[0], argv);
+    if(found < 0) return -1;
+    return 1;
+    default :
+    wait(&w); break;
+  }
+
+  return 1;
+}
+
+int one_of_args_is_tar(char **argv, int argc){
+  for(int i = 0; i < argc; i++){
+    if(strstr(argv[i],".tar/") != NULL) return 1;
+  }
+  return 0;
 }
