@@ -3,33 +3,7 @@
 //#include "tar.h"
 
 int mkDir_call(char *const arg[],int argc){
-  int fork_mkDir=fork();
-  switch(fork_mkDir)
-    {
-    case -1:perror("mkdir");
-      exit(EXIT_FAILURE);
-    case 0:
-      {
-	int option=has_option(args, argc);
-	int* tarIndex=malloc(sizeof(int)*argc);
-	if(tarIndex==NULL)
-	  {
-	    perror("mkDir");
-	    exit(EXIT_FAILURE);
-	  }
-	has_Tar(args,argc,tarIndex);
-	if(argc==1)
-	  {
-	    perror("mkDir OPERANDE MANQUANTE");
-	    exit(EXIT_FAILURE);
-	  }
-	else if(argc>1 && option==0)
-	  {
-	    if(exevp("mkdir",
-	  }
-	    
-      }
-    }
+  return 0;
 }
 
 char *substr(const char *src,int start,int end) { 
