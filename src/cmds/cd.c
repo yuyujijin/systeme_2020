@@ -17,18 +17,20 @@ int cd_aux(char *path){
   if(strcmp(path,"") == 0 || strcmp(path,"/") == 0) return 0;
   /* we're in a tar */
   if(strstr(getenv("TARPATH"),".tar") != NULL){
-    /* no tar in a tar */
-    if(strstr(path,".tar") != NULL) return -1;
-
     char* elem = strtok(path,"/");
     if(elem == NULL) return -1;
+
+    /* no tar in a tar */
+    if(strstr(elem,".tar") != NULL) return -1;
+
     if(strcmp(elem,".") == 0) return cd_aux(path + strlen(elem) + 1);
     if(strcmp(elem,"..") == 0){
       char newpath[strlen(getenv("TARPATH"))];
       strcat(newpath, getenv("TARPATH"));
-      do{
+      while(newpath[strlen(newpath) - 1] != '/'){
         newpath[strlen(newpath) - 1] = '\0';
-      }while(newpath[strlen(newpath) - 1] != '/');
+      }
+      newpath[strlen(newpath) - 1] = '\0';
       setenv("TARPATH",newpath,1);
       return cd_aux(path + strlen(elem) + 1);
     }
