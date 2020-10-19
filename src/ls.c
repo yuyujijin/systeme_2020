@@ -67,7 +67,7 @@ int ls_tar(const char *args,int option){
   if(posix_header==NULL)return -1;
   if(option==-1){
     for(int i=0;posix_header[i]!=NULL;i++){
-      if(write(1,posix_header[i],strlen(posix_header[i]->name))<0)return -1;
+      if(write(1,posix_header[i]->name,strlen(posix_header[i]->name))<0)return -1;
       if(write(1," ",1)<0)return -1;
     }
     return 0;

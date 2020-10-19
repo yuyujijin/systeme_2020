@@ -254,7 +254,7 @@ struct posix_header** posix_header_from_tarFile(const char *path){
   int directory=0;
   char *directory_name;//won't be used if directory==0
   int source=is_source(path);
-  char altpath[sizeof(path)+1];//we do this cause we want path to be a.tar/b/c/ and not a.tar/b/c for the case of folder
+  char altpath[strlen(path)+2];//we do this cause we want path to be a.tar/b/c/ and not a.tar/b/c for the case of folder
   strcpy(altpath,path);
   strcat(altpath,"/");
   char *tar_path=get_tar_from_full_path(path);
