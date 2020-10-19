@@ -9,7 +9,7 @@ int main(void){
 char* getpwd(){
   char* pwd = getcwd(NULL,0);
   char* pwd_plus = getenv("TARPATH");
-  if(pwd_plus == NULL) return "";
+  if(pwd_plus == NULL) return pwd;
   char* total_pwd = malloc(sizeof(char) * (strlen(pwd) + strlen(pwd_plus)) + 2);
   memset(total_pwd, '\0',(strlen(pwd) + strlen(pwd_plus)) + 2);
   strcat(total_pwd,pwd);

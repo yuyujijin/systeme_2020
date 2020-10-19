@@ -22,6 +22,9 @@ int execute_tar_cmd(char **argv);
 /* read_line read the next line from stdin */
 char* read_line();
 
+/* this function check if one of the args is looking INSIDE a tar */
+int one_of_args_is_tar(char **argv, int argc);
+
 
 int main(){
   size_t size;
@@ -49,7 +52,7 @@ int main(){
     if(strcmp(args[0],"exit") == 0) exit(0);
 
     /* in case we're in a tarball */
-    if(strstr(getenv("TARPATH"),".tar") != NULL){
+    if(strstr(getenv("TARPATH"),".tar") != NULL || one_of_args_is_tar(args + 1, argc -1)){
       if(execute_tar_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
     }else{
       if(execute_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
@@ -150,4 +153,11 @@ int execute_tar_cmd(char **argv){
   }
 
   return 1;
+}
+
+int one_of_args_is_tar(char **argv, int argc){
+  for(int i = 0; i < argc; i++){
+    if(strstr(argv[i],".tar/") != NULL) return 1;
+  }
+  return 0;
 }
