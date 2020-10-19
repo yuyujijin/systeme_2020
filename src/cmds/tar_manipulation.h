@@ -1,3 +1,5 @@
+#ifndef TAR_MANIPULATION_H
+#define TAR_MANIPULATION_H
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -6,7 +8,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include "tar.h"
-
 
 /* check for every header of a tar file if its checksum is correct */
 int isTar(char*);
@@ -21,3 +22,5 @@ int addTar(char *path, char name[100],  char typeflag);
 int rmTar(char *path, char *name);
 
 int isEmpty(struct posix_header*);
+
+#endif

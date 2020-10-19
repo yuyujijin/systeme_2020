@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include "cmds/cd.h"
 
 #define MAX_SIZE 256
 #define BOLDGREEN "\e[1;32m"
@@ -36,6 +37,8 @@ int main(){
   while(1){
     char bgnline[256];
     char *cwd = getcwd(NULL, 0);
+    cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 1);
+    strcat(cwd,getenv("TARPATH"));
     sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
 
     write(STDIN_FILENO,bgnline,strlen(bgnline));
@@ -50,6 +53,13 @@ int main(){
     if(args == NULL) return -1;
 
     if(strcmp(args[0],"exit") == 0) exit(0);
+
+    /* specific case for cd, because we do not execute it */
+    if(strcmp(args[0],"cd") == 0){
+      if(args[1] == NULL) continue;
+      if(cd(args[1]) < 0) perror("cd");
+      continue;
+    }
 
     /* in case we're in a tarball */
     if(strstr(getenv("TARPATH"),".tar") != NULL || one_of_args_is_tar(args + 1, argc -1)){

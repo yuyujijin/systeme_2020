@@ -193,8 +193,6 @@ int isTar(char* path){
     /* if checksum fails, then its not a proper tar */
     if(check_checksum(&tampon) == 0) return 0;
 
-    printf("%s\n",tampon.name);
-
     /* we get the size of the file for this header */
     int filesize;
     sscanf(tampon.size,"%o", &filesize);
