@@ -31,7 +31,7 @@ int addTar(char *path, char *name, char typeflag){
     if(write(fd,empty,BLOCKSIZE - size) < 0) return -1;
   }
 
-  int blocksnbr = (bufsize + 512 - 1)/512;
+  //int blocksnbr = (bufsize + 512 - 1)/512;
 
   /* We then put the two empty blocks at the end of the tar */
   char emptybuf[512];
@@ -79,7 +79,7 @@ int rmTar(char *path, char *name){
 
   while(1){
     /* create the buffer to read the header */
-    size_t size = read(fd, &tampon, sizeof(struct posix_header));
+    /*size_t size =*/ read(fd, &tampon, sizeof(struct posix_header));
 
     /* if its empty, we stop */
     if(isEmpty(&tampon)){
@@ -185,7 +185,7 @@ int isTar(char* path){
 
   while(1){
     /* create the buffer to read the header */
-    size_t size = read(fd, &tampon, sizeof(struct posix_header));
+    /*size_t size =*/ read(fd, &tampon, sizeof(struct posix_header));
 
     /* if its empty, we stop */
     if(isEmpty(&tampon)) break;
@@ -222,7 +222,7 @@ size_t offsetTar(char *path){
 
   char buf[BLOCKSIZE];
   size_t size;
-  int i = 0;
+  //int i = 0;
   while((size = read(fd, &buf, BLOCKSIZE)) > 0){
     offset += 512;
     if(buf[0] == '\0') return offset;
