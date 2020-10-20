@@ -1,8 +1,23 @@
-#include "mkDir.h"
+
 #include "tar_manipulation.h"
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <limits.h>
 //#include "tar.h"
 
-int mkDir_call(char *const arg[],int argc){
+int has_tar(const char* argv)
+{
+  for(int i=0;i<strlen(argv)-3;i++)
+    {
+    if(argv[i]=='.' && argv[i+1]=='t' && argv[i+2]=='a' && argv[i+3]=='r')
+      return 1;
+    }
+  
+  return 0;
+}
+
+int mkDir_call(int argc,const char** argv){
   int fork_mkDir=fork();
   switch(fork_mkDir)
     {
@@ -10,27 +25,53 @@ int mkDir_call(char *const arg[],int argc){
       exit(EXIT_FAILURE);
     case 0:
       {
-	int option=has_option(args, argc);
-	int* tarIndex=malloc(sizeof(int)*argc);
-	if(tarIndex==NULL)
-	  {
-	    perror("mkDir");
-	    exit(EXIT_FAILURE);
-	  }
-	has_Tar(args,argc,tarIndex);
 	if(argc==1)
 	  {
 	    perror("mkDir OPERANDE MANQUANTE");
 	    exit(EXIT_FAILURE);
 	  }
-	else if(argc>1 && option==0)
+	else if(argc>1)
 	  {
-	    if(exevp("mkdir",
+	    char* cmd=malloc(6);
+	    cmd="mkdir ";
+	    char* arg=malloc(PATH_MAX);
+	    if(arg==NULL || cmd==NULL) exit(EXIT_FAILURE);
+	    memcpy(arg,cmd,6);
+	    for (int i=1;i<argc;i++)
+	      {
+		//if we're working in a regular path
+		if(!(has_tar(cmd))) 
+		  {
+		    if(execl("/bin/mkdir","/bin/mkdir",argv[i],NULL)==-1)
+		      {
+			perror("mkDir");
+			exit(EXIT_FAILURE);
+		      }
+		  }
+		else
+		  {
+		    printf("We're in a tar path\n");
+		  }
+		//free(cmd[1]);
+		/*
+		//si pas tar
+		if(execl("mkdir",argv[i],NULL)==-1)
+		  {
+		    perror("mkDir");
+		    exit(EXIT_FAILURE);
+		  }
+	    //else
+	    //pour i allant jusqu'au nombre d'arg
+	    //mkDir_tar(const char *argv);*/
+	    }
 	  }
-	    
+	exit(EXIT_SUCCESS);
+	break;
       }
+    default: wait(NULL);break;
     }
 }
+
 
 char *substr(const char *src,int start,int end) { 
   char *dest=NULL;
@@ -91,6 +132,10 @@ int splitMkDir(const char* argv)
 int main(int argc, const char** argv)
 {
   //erreur si zero argument à voir au moment du lien
-  splitMkDir(argv[1]);
+  mkDir_call(argc,argv);
+
+  //perror(cmd);
+  
+  //printf("%s\n",cmd);
   return 0;
 }
