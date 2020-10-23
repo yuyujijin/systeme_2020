@@ -1,6 +1,5 @@
 #include "mkdir.h"
-#include "tar_manipulation.h"
-//#include "tar.h"
+#include"tar_manipulation.c"
 
 int mkDir_call(int argc,const char** argv){
   int fork_mkDir=fork();
@@ -81,12 +80,53 @@ int mkdir_tar(const char* argv)
 	start=i+1;
     }
   char* name=malloc(strlen(argv)-start+1);
+  memset(name,'\0',strlen(argv)-start+1);
   memcpy(name,argv+start,strlen(argv)-start+1);
+  
+  if(argv[strlen(argv)-1]!='/')
+    name[strlen(name)]='/';
 
   char *path=malloc(strlen(argv)-start+1);
-  memcpy(path,argv,strlen(argv)-start+1);
-  addTar(path,name,'5');
+  memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
+  if(!addDirTar(path,name))perror("mkdir");
   return 0;
+}
+
+int addDirTar(char* path, char* name)
+{
+  int fd;
+
+  fd = open(path,O_WRONLY);
+  if(fd < 0) return -1;
+
+  if(!isTar(path)) return -1;
+
+  //we get the offset right before the empty blocks 
+  size_t offt = offsetTar(path) - BLOCKSIZE;
+  // and we go there 
+  lseek(fd,offt + BLOCKSIZE,SEEK_CUR);
+
+  //create new header for the new directory
+  struct posix_header hd;
+  memset(&hd,'\0',sizeof (struct posix_header));
+
+  memcpy(hd.name, name, strlen(name)+1);
+
+  sprintf(hd.mode,"0000700");
+
+  sprintf(hd.size,"%011o",512);
+  //memcpy(hd.size,"%011o");
+
+  hd.typeflag ='5';
+  memcpy(hd.magic,"ustar",5);
+  memcpy(hd.version,"00",2);
+  set_checksum(&hd);
+
+  //put the header in the tarball
+  if (write(fd,&hd,sizeof(struct posix_header))<0)
+    perror("mkdir");
+  close(fd);
+  return 1; 
   /*int fd;
   
   //initialize checksum
@@ -95,16 +135,7 @@ int mkdir_tar(const char* argv)
   struct posix_header hd;
   memset(&hd,'\0',sizeof(struct posix_header));
 
-  memcpy(hd.name, name, strlen(name));
-
-  sprintf(hd.mode,"0000700");
-
-  sprintf(hd.size,"4096");
-
-  hd.typeflag ='5';
-  memcpy(hd.magic,"ustar",5);
-  memcpy(hd.version,"00",2);
-  set_checksum(&hd);
+  
   
   int fd=stat(argv,h);
   

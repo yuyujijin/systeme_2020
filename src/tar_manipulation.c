@@ -1,5 +1,4 @@
 #include "tar_manipulation.h"
-#include "tar.h"
 
 int addTar(char *path, char *name, char typeflag){
   int fd;

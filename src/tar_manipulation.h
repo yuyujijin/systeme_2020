@@ -53,5 +53,4 @@ struct posix_header** posix_header_from_tarFile(const char *path);
 */
 int is_source(const char* path);
 
-
 #endif
