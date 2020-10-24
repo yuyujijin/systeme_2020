@@ -27,6 +27,7 @@ int isEmpty(struct posix_header*);
 
 int is_source(const char* path);
 
+/* tells if filename is in tarball tarname */
 int exists(char *tarname, char *filename);
 
 #endif
