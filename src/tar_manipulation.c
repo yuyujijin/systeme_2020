@@ -303,10 +303,10 @@ struct posix_header** posix_header_from_tarFile(const char *path){
       // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       // !!!!!!!! If you find a bug it might be here, the typeflag on my computer has a weird behavior !!!!!!!!
       // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(tampon->typeflag==53){//on my computer a directory has the value 53 weird ...
+      if(tampon->typeflag=='5'){//on my computer a directory has the value 53 weird ...
         directory_name=tampon->name;
         directory=1;
-      }else if(tampon->typeflag==48){//we only want this file
+      }else if(tampon->typeflag=='0'){//we only want this file
         free(result);
         result=malloc(sizeof(struct posix_header));
         result[0]=tampon;
