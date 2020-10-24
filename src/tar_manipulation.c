@@ -262,7 +262,7 @@ char * data_from_tarFile(const char *path){
     if(isEmpty(tampon)) break;
     int filesize;
     sscanf(tampon->size,"%o", &filesize);
-    if(strcmp(tampon->name,strstr(path,".tar/")+5)==0&&tampon->typeflag==48){
+    if(strcmp(tampon->name,strstr(path,".tar/")+5)==0&&tampon->typeflag=='0'){
       char *data=malloc(filesize+1);
       read(fd,data,filesize);
       data[filesize]='\0';
