@@ -48,7 +48,7 @@ struct posix_header
    sum (on 6 bytes), followed by '\0' and ' '.
 */
 
-void set_checksum(struct posix_header *hd) {
+static void set_checksum(struct posix_header *hd) {
   memset(hd->chksum,' ',8);
   unsigned int sum = 0;
   char *p = (char *)hd;
@@ -58,7 +58,7 @@ void set_checksum(struct posix_header *hd) {
 
 /* Check that the checksum of a header is correct */
 
-int check_checksum(struct posix_header *hd) {
+static int check_checksum(struct posix_header *hd) {
   unsigned int checksum;
   sscanf(hd->chksum,"%o ", &checksum);
   unsigned int sum = 0;

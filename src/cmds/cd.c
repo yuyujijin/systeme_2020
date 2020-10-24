@@ -1,12 +1,14 @@
 #include "cd.h"
 #include "tar_manipulation.c"
 
+int truncate_tarname_path(char *path, char **tarname, char **newpath);
+
 int cd(char *path){
   if(strcmp(path,"~") == 0){ setenv("TARPATH", "", 1); return chdir(getenv("HOME")); }
   char* pwd = getcwd(NULL, 0);
   char* tarpwd = getenv("TARPATH");
   /* first we try if we can access it */
-  if(cd_aux(path) >= 0) return 0;
+  if(cd_aux(path) >= 0) return 1;
   /* if not, cancel every changes */
   chdir(pwd);
   setenv("TARPATH",tarpwd,1 );
@@ -14,7 +16,7 @@ int cd(char *path){
 }
 
 int cd_aux(char *path){
-  if(strcmp(path,"") == 0 || strcmp(path,"/") == 0) return 0;
+  if(strlen(path) <= 0 || strcmp(path,"/") == 0) return 1;
   /*check if we're in a tar */
   if(strstr(getenv("TARPATH"),".tar") != NULL){
 		/* get first element of path */
@@ -35,16 +37,49 @@ int cd_aux(char *path){
       }
       newpath[strlen(newpath) - 1] = '\0';
       setenv("TARPATH",newpath,1);
+
       return cd_aux(path + strlen(elem) + 1);
     }
 		/* any dir */
-		/* TODO
-		get the tarball's name we're in, get the rest of the path and concatenate it with elem
-		check if this path exist in the tarball and if its a directory
-		if not, return -1;
-		if it is, add elem to the tarpath and recall on path + strlen(elem) + 1
-		*/
-    return 0;
+    char* tarname;
+    char* newpath;
+
+    /* we get the name of the tar we're in + rest of path */
+    truncate_tarname_path(getenv("TARPATH") + 1, &tarname, &newpath);
+
+    /* megapath is just tarpath + "/" + elem + "/" */
+    char* megapath;
+    if(strlen(newpath) > 0){
+      megapath = malloc(sizeof(char) * (strlen(newpath) + strlen(elem) + 1));
+      if(megapath == NULL) return -1;
+      strcat(megapath,newpath);
+      strcat(megapath,"/");
+    }else{
+      megapath = malloc(sizeof(char) * (strlen(elem) + 1));
+      if(megapath == NULL) return -1;
+    }
+    strcat(megapath,elem);
+    strcat(megapath,"/");
+
+    /* check if this file exist in tarball */
+    if(exists(tarname, megapath) == 1){
+      /* if it is, we just update the env variabe TARPATH */
+      char* tarpath = getenv("TARPATH");
+      char *newtarpath = malloc((strlen(tarpath) + strlen(elem) + 2) * sizeof(char));
+
+      if(newtarpath == NULL) return -1;
+      memset(newtarpath,'\0',strlen(tarpath) + strlen(elem) + 2);
+
+      strcat(newtarpath,tarpath);
+      strcat(newtarpath,"/");
+      strcat(newtarpath,elem);
+
+      setenv("TARPATH", newtarpath, 1);
+
+      return cd_aux(path + strlen(elem) + 1);
+    }
+		/* if not, we just return that we cant */
+    return -1;
   }
   /* if we're not in a tarball */
   /* we take the first elem in path, enter it and recall on the rest */
@@ -59,7 +94,7 @@ int cd_aux(char *path){
     char *newpath = malloc((strlen(tarpath) + strlen(elem) + 2) * sizeof(char));
 
     if(newpath == NULL) return -1;
-    memset(newpath,'\0',strlen(newpath) + strlen(elem) + 2);
+    memset(newpath,'\0',strlen(tarpath) + strlen(elem) + 2);
 
     strcat(newpath,"/");
     strcat(newpath,elem);
@@ -69,4 +104,16 @@ int cd_aux(char *path){
   /* if we're not trying to access a tarball */
   if(chdir(elem) < 0) return -1;
   return cd_aux(path + strlen(elem) + 1);
+}
+
+int truncate_tarname_path(char *path, char **tarname, char **newpath){
+  *tarname = strtok(path,"/");
+  if(*tarname == NULL) return -1;
+
+  *newpath = malloc((strlen(path) - strlen(*tarname)));
+  if(*newpath == NULL) return -1;
+  memset(*newpath,'\0',strlen(path) - strlen(*tarname));
+  strcat(*newpath, path + strlen(*tarname) + 1);
+
+  return 1;
 }

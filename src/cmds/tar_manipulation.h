@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
+#include <stdio.h>
 #include "tar.h"
 
 /* check for every header of a tar file if its checksum is correct */
@@ -22,5 +24,9 @@ int addTar(char *path, char name[100],  char typeflag);
 int rmTar(char *path, char *name);
 
 int isEmpty(struct posix_header*);
+
+int is_source(const char* path);
+
+int exists(char *tarname, char *filename);
 
 #endif
