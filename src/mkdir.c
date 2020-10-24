@@ -1,8 +1,6 @@
 #include "mkdir.h"
 #include"tar_manipulation.c"
 
-char *substr(const char *src,int start,int end);
-
 int mkDir_call(int argc,const char** argv){
   //fork for exec "mkdir
   int fork_mkDir=fork();
@@ -28,8 +26,8 @@ int mkDir_call(int argc,const char** argv){
 	for (int i=1;i<argc;i++)
 	  {
 	    //if we're working in a regular path
-	    printf("non has_tar: %d\n",!has_tar(argv[i]));
-	    if(!(has_tar(argv[i]))) 
+	    int tar_index=has_tar(argv[i]);
+	    if(!tar_index) 
 	      {
 		switch(fork())
 		  {
@@ -49,7 +47,7 @@ int mkDir_call(int argc,const char** argv){
 	    //if we're in a tar
 	    else
 	      {
-		if(mkdir_tar(argv[i])<0)
+		if(mkdir_tar(argv[i],tar_index)<0)
 		  {
 		    perror("A REFLECHIIIRRR");
 		  }
@@ -75,25 +73,16 @@ int has_tar(const char* argv)
 	int fd=open(substr(argv,0,i+5),O_DIRECTORY);
 	if (fd<0){
 	  close(fd);
-	  return i+4;
+	  return i+5;
 	}
       }
     }
   return 0;
 }
 
-int mkdir_tar(const char* argv)
+int mkdir_tar(const char* argv,int start)
 {
   //if directory already exists in the tar
-  
-  //index of the next char '/' after .tar
-  int start=0;
-  for(int i=0;i<strlen(argv)-4;i++)
-    {
-      if(argv[i]=='.' && argv[i+1]=='t' && argv[i+2]=='a'
-	 && argv[i+3]=='r' && argv[i+4]=='/')
-	start=i+5;
-    }
   
   char* name=malloc(strlen(argv)-start+1);
   memset(name,'\0',strlen(argv)-start+1);
@@ -104,7 +93,14 @@ int mkdir_tar(const char* argv)
 
   char *path=malloc(strlen(argv)-start+1);
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
-  printf("name: %s\npath: %s\n",name,path);
+  //printf("name: %s\npath: %s\n",name,path);
+  if(file_exists_in_tar(path,name))
+    {
+      errno=17;
+      perror("mkdir");
+      exit(EXIT_FAILURE);
+    }
+  
   if(!addDirTar(path,name)){
     perror("mkdir");
     exit(EXIT_FAILURE);
@@ -117,9 +113,7 @@ int addDirTar(char* path, char* name)
   int fd;
 
   fd = open(path,O_WRONLY | O_RDONLY);
-  if(fd < 0) return -1;
-
-  //if(!isTar(path)) return -1;
+  if(fd < 0) return 0;
 
   //we get the offset right before the empty blocks 
   size_t offt = offsetTar(path) - BLOCKSIZE*2;
@@ -143,25 +137,11 @@ int addDirTar(char* path, char* name)
   hd.typeflag ='5';
   memcpy(hd.magic,TMAGIC,6);
   set_checksum(&hd);
-  
-
-
-  
-  
-
-  /*printf("name: %s\n", hd.name);
-  printf("mode: %s\n", hd.mode);
-  printf("size: %s\n", hd.size);
-  printf("chksum: %s\n", hd.chksum);
-  printf("typeflag: %c\n", hd.typeflag);
-  printf("magic: %s\n", hd.magic);*/
-
 
   //put the header in the tarball
   if (write(fd,&hd,sizeof(struct posix_header))<0)
     perror("mkdir");
 
-  
   char emptybuf[512];
   memset(emptybuf,0,512);
   for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
@@ -171,7 +151,6 @@ int addDirTar(char* path, char* name)
   
   return 0;
 }
-
 
 char *substr(const char *src,int start,int end) { 
   char *dest=NULL;
@@ -184,6 +163,28 @@ char *substr(const char *src,int start,int end) {
     dest[end]='\0';
   }
   return dest;                            
+}
+
+int file_exists_in_tar(char* path, char* name){
+  struct posix_header hd;
+  int fd;
+
+  fd = open(path,O_RDONLY);
+
+  while(hd.name[0]!='\0'){
+    
+    size_t size = read(fd, &hd, sizeof(struct posix_header));
+
+    if(strcmp(name,hd.name)==0)  { close(fd); return 1;}
+
+    int filesize;
+    sscanf(hd.size,"%o", &filesize);
+    int s = (filesize + 512 - 1)/512;
+    struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
+    read(fd, temp, s * BLOCKSIZE);
+    free(temp);
+  }
+  return 0;
 }
 
 /*
