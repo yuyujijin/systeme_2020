@@ -2,59 +2,64 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
-int MAX_SIZE = 256;
+#define MAX_SIZE 256
+#define BOLDGREEN "\e[1;32m"
+#define BOLDBLUE "\e[1;34m"
+#define RESET "\e[0m"
 
 /* str_cut takes a input string of size length, and returns a array of string containing
 the sub-string of input_str delimited by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char token,size_t length, int* argc);
 
+/* execute cmd argv[0] with its args */
+int execute_cmd(char **argv);
+
+/* same w/ tar */
+int execute_tar_cmd(char **argv);
+
 /* read_line read the next line from stdin */
 char* read_line();
 
-/* two placeholder functions */
-void cd();
-void ls();
+/* this function check if one of the args is looking INSIDE a tar */
+int one_of_args_is_tar(char **argv, int argc);
 
-/* number of functions availabe */
-int CMDS_NBR = 2;
-/* name of functions availabe, both array have similare index for same func */
-char *commands[] = {"cd","ls"};
-/* array of functions available
-~ not really at ease with this syntax right now, found it on here
-https://stackoverflow.com/questions/252748/how-can-i-use-an-array-of-function-pointers
-i'll inform myself more about it ~ */
-void (*commands_func[])() = {&cd,&ls};
 
 int main(){
   size_t size;
   char* line;
 
+  /* environnement variable that store the additional path */
+  setenv("TARPATH","",1);
+
   while(1){
-    write(1,"$ ",1);
+    char bgnline[256];
+    char *cwd = getcwd(NULL, 0);
+    sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
+
+    write(STDIN_FILENO,bgnline,strlen(bgnline));
 
     /* read next line */
     line = read_line();
-    if(line == NULL) return -1;
+    if(line == NULL) break;
 
     /* cut it in words array with space char delimiter */
     int argc;
     char **args = str_cut(line,' ', strlen(line), &argc);
     if(args == NULL) return -1;
 
-    /* exit option */
     if(strcmp(args[0],"exit") == 0) exit(0);
 
-    /* compare first args of words array with every function known */
-    int found = 0;
-    for(int j = 0; j < CMDS_NBR; j++){
-      if(strcmp(args[0],commands[j]) == 0){ found = 1; commands_func[j](); }
+    /* in case we're in a tarball */
+    if(strstr(getenv("TARPATH"),".tar") != NULL || one_of_args_is_tar(args + 1, argc -1)){
+      if(execute_tar_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
+    }else{
+      if(execute_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
     }
-
-    /* in case we didnt find anything */
-    if(!found && strlen(args[0]) > 0) printf("Commande %s non reconnue\n",args[0]);
-
   }
+
+  write(STDIN_FILENO,"\n",2);
   return 0;
 }
 
@@ -63,7 +68,7 @@ char *read_line(){
   size_t size;
 
   size = read(0,buf,MAX_SIZE);
-  if(size < 0) return NULL;
+  if(size <= 0) return NULL;
 
   /* take just the red part, store it in s and concatenate '\0' */
   char* s = malloc(sizeof(char) * size + 1);
@@ -89,6 +94,8 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
       char *w = malloc(sizeof(char) * l + 1);
       if(w == NULL) return NULL;
 
+      memset(w,'\0', sizeof(char) * l + 1);
+
       strncat(w, input_str + i - l, l);
       strcat(w, "\0");
 
@@ -101,9 +108,56 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
     l++;i++;
   }
 
+  words = realloc(words, (*argc + 1) * sizeof(char*));
+
   return words;
 }
 
-/* placeholder funcs */
-void cd(){ printf("commande tapée : cd\n"); }
-void ls(){ printf("commande tapée : ls\n"); }
+int execute_cmd(char **argv){
+  int found, w;
+
+  int r = fork();
+  /* exit option */
+  switch(r){
+    case -1 : return -1;
+    case 0 :
+    found = execvp(argv[0], argv);
+    if(found < 0) return -1;
+    return 1;
+    default :
+    wait(&w); break;
+  }
+
+  return 1;
+}
+
+int execute_tar_cmd(char **argv){
+  int found, w;
+
+  char* new_argv0 = malloc(sizeof(char) * (strlen(argv[0]) + 2 + 1));
+  memset(new_argv0,'\0',(strlen(argv[0]) + 7 + 1));
+  strcat(new_argv0,"cmds/./");
+  strcat(new_argv0,argv[0]);
+  argv[0] = new_argv0;
+
+  int r = fork();
+  /* exit option */
+  switch(r){
+    case -1 : return -1;
+    case 0 :
+    found = execvp(argv[0], argv);
+    if(found < 0) return -1;
+    return 1;
+    default :
+    wait(&w); break;
+  }
+
+  return 1;
+}
+
+int one_of_args_is_tar(char **argv, int argc){
+  for(int i = 0; i < argc; i++){
+    if(strstr(argv[i],".tar/") != NULL) return 1;
+  }
+  return 0;
+}
