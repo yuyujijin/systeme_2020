@@ -1,5 +1,6 @@
 #include "cd.h"
 #include "tar_manipulation.c"
+#include <errno.h>
 
 int truncate_tarname_path(char *path, char **tarname, char **newpath);
 
@@ -24,7 +25,7 @@ int cd_aux(char *path){
     if(elem == NULL) return -1;
 
     /* no tar in a tar */
-    if(strstr(elem,".tar") != NULL) return -1;
+    if(strstr(elem,".tar") != NULL){ errno = EADDRNOTAVAIL; return -1; }
 
 		/* same dir */
     if(strcmp(elem,".") == 0) return cd_aux(path + strlen(elem) + 1);
@@ -87,6 +88,7 @@ int cd_aux(char *path){
       return cd_aux(path + strlen(elem) + 1);
     }
 		/* if not, we just return that we cant */
+    errno = ENOENT;
     return -1;
   }
   /* if we're not in a tarball */
@@ -96,7 +98,7 @@ int cd_aux(char *path){
   /* if we're trying to enter a tar */
   if(strstr(elem,".tar") != NULL){
     /* if its a FAKE tar */
-    if(!isTar(elem)) return -1;
+    if(!isTar(elem)){ errno = ENOENT; return -1; }
     char* tarpath = getenv("TARPATH");
     if(tarpath == NULL) return -1;
     char *newpath = malloc((strlen(tarpath) + strlen(elem) + 2) * sizeof(char));
