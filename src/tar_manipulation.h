@@ -19,7 +19,7 @@ int isTar(char*);
 size_t offsetTar(char *path);
 
 /* reads from stdin and adds it to a tar */
-int addTar(char *path, char name[100],  char typeflag);
+int addTar(char *path, char name[100]/*,  char typeflag*/);
 
 /* removes file with corresponding name */
 int rmTar(char *path, char *name);
