@@ -37,7 +37,8 @@ int main(){
   while(1){
     char bgnline[256];
     char *cwd = getcwd(NULL, 0);
-    cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 1);
+    cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 2);
+    strcat(cwd,"/");
     strcat(cwd,getenv("TARPATH"));
     sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
 

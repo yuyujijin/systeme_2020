@@ -32,7 +32,7 @@ int cd_aux(char *path){
     if(strcmp(elem,"..") == 0){
       char newpath[strlen(getenv("TARPATH"))];
       strcat(newpath, getenv("TARPATH"));
-      while(newpath[strlen(newpath) - 1] != '/'){
+      while(strlen(newpath) > 0 && newpath[strlen(newpath) - 1] != '/'){
         newpath[strlen(newpath) - 1] = '\0';
       }
       newpath[strlen(newpath) - 1] = '\0';
@@ -44,8 +44,14 @@ int cd_aux(char *path){
     char* tarname;
     char* newpath;
 
+    /* we clone tarpath because strtok (in truncate_...) modifies the path */
+    char* clonetarpath = malloc((strlen(getenv("TARPATH")) + 1) * sizeof(char));
+    if(clonetarpath == NULL) return -1;
+    strcat(clonetarpath, getenv("TARPATH"));
+    strcat(clonetarpath,"\0");
+
     /* we get the name of the tar we're in + rest of path */
-    truncate_tarname_path(getenv("TARPATH") + 1, &tarname, &newpath);
+    truncate_tarname_path(clonetarpath, &tarname, &newpath);
 
     /* megapath is just tarpath + "/" + elem + "/" */
     char* megapath;
@@ -65,7 +71,9 @@ int cd_aux(char *path){
     if(exists(tarname, megapath) == 1){
       /* if it is, we just update the env variabe TARPATH */
       char* tarpath = getenv("TARPATH");
+
       char *newtarpath = malloc((strlen(tarpath) + strlen(elem) + 2) * sizeof(char));
+
 
       if(newtarpath == NULL) return -1;
       memset(newtarpath,'\0',strlen(tarpath) + strlen(elem) + 2);
@@ -96,7 +104,6 @@ int cd_aux(char *path){
     if(newpath == NULL) return -1;
     memset(newpath,'\0',strlen(tarpath) + strlen(elem) + 2);
 
-    strcat(newpath,"/");
     strcat(newpath,elem);
     setenv("TARPATH", newpath,1);
     return cd_aux(path + strlen(elem) + 1);
@@ -112,6 +119,7 @@ int truncate_tarname_path(char *path, char **tarname, char **newpath){
 
   *newpath = malloc((strlen(path) - strlen(*tarname)));
   if(*newpath == NULL) return -1;
+
   memset(*newpath,'\0',strlen(path) - strlen(*tarname));
   strcat(*newpath, path + strlen(*tarname) + 1);
 
