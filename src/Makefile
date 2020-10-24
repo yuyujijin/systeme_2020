@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-W -Wunused-value -Wall -ansi -pedantic -std=c99 
 LDFLAGS= -lm
 
-ALL=shell cmds/pwd cmds/ls cmds/cat clean mrproper
+ALL=shell cmds/pwd cmds/ls cmds/cat 
 all: $(ALL)
 
 shell: shell.c
@@ -20,10 +20,13 @@ cmds/ls: cmds/ls.o tar_manipulation.o
 cmds/cat: cmds/cat.o tar_manipulation.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-.PHONY: clean mrproper
+.PHONY: clean cleanall
 
 clean:
+	rm -rf $(ALL)
+
+cleano: 
 	rm -rf *.o
 
-mrproper: clean
-	rm -rf $(EXEC)
+cleanall:clean cleano
+
