@@ -1,0 +1,15 @@
+CC=gcc
+CFLAGS=-W -Wall -ansi -pedantic
+LDFLAGS= -lm
+
+ALL=shell
+all: $(ALL)
+
+shell:shell.c
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+clean:
+	rm -rf *.o
+
+mrproper: clean
+	rm -rf $(EXEC)
