@@ -52,6 +52,7 @@ struct posix_header** posix_header_from_tarFile(const char *path);
   A methods that simply return 1 if path="a.tar" or path="a.tar/" and return 0 otherwise
 */
 int is_source(const char* path);
+
 /*
   Return the data of the file named path,
   If path="a.tar/c" then return the data inside c,

@@ -1,7 +1,6 @@
 #define _POSIX_C_SOOURCE 200112L
 #define _XOPEN_SOURCE 500
 #include "tar_manipulation.h"
-#include "tar.h"
 
 int addTar(char *path, char *name/*, char typeflag*/){
   int fd;
@@ -33,7 +32,6 @@ int addTar(char *path, char *name/*, char typeflag*/){
     memset(empty,'\0',BLOCKSIZE - size);
     if(write(fd,empty,BLOCKSIZE - size) < 0) return -1;
   }
-
 
   /* We then put the two empty blocks at the end of the tar */
   char emptybuf[512];
@@ -81,7 +79,8 @@ int rmTar(char *path, char *name){
 
   while(1){
     /* create the buffer to read the header */
-    /*size_t size = */read(fd, &tampon, sizeof(struct posix_header));
+
+    /*size_t size =*/ read(fd, &tampon, sizeof(struct posix_header));
 
     /* if its empty, we stop */
     if(isEmpty(&tampon)){
@@ -187,6 +186,7 @@ int isTar(char* path){
 
   while(1){
     /* create the buffer to read the header */
+
     read(fd, &tampon, sizeof(struct posix_header));
 
     /* if its empty, we stop */
@@ -223,6 +223,7 @@ size_t offsetTar(char *path){
 
   char buf[BLOCKSIZE];
   size_t size;
+
   while((size = read(fd, &buf, BLOCKSIZE)) > 0){
     offset += 512;
     if(buf[0] == '\0') return offset;

@@ -1,7 +1,6 @@
 #ifndef TAR_H
 #define TAR_H
-#include <string.h>
-#include <stdio.h>
+
 /* tar Header Block, from POSIX 1003.1-1990.  */
 
 #define BLOCKSIZE 512
@@ -50,7 +49,7 @@ struct posix_header
    sum (on 6 bytes), followed by '\0' and ' '.
 */
 
-static void set_checksum(struct posix_header *hd) {
+void set_checksum(struct posix_header *hd) {
   memset(hd->chksum,' ',8);
   unsigned int sum = 0;
   char *p = (char *)hd;
@@ -60,7 +59,7 @@ static void set_checksum(struct posix_header *hd) {
 
 /* Check that the checksum of a header is correct */
 
-static int check_checksum(struct posix_header *hd) {
+int check_checksum(struct posix_header *hd) {
   unsigned int checksum;
   sscanf(hd->chksum,"%o ", &checksum);
   unsigned int sum = 0;

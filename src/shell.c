@@ -27,7 +27,6 @@ char* read_line();
 /* this function check if one of the args is looking INSIDE a tar */
 int one_of_args_is_tar(char **argv, int argc);
 
-
 int main(){
   char* line;
 
