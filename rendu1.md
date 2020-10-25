@@ -1,6 +1,6 @@
 **RENDU N°1:**
 
-Le projet se teste sur la branche develop, dans le fichier src/ (ce n'est pas la meilleure option, c'est une erreur d'attention, ce sera changer). On le compile avec "make". Pour l'exécuter, on utilise la commande "./shell" qui ouvre un terminal.
+Le projet se teste sur la branche rendu1, dans le fichier src/ (ce n'est pas la meilleure option, c'est une erreur d'attention, ce sera changer). On le compile avec "make". Pour l'exécuter, on utilise la commande "./shell" qui ouvre un terminal.
 
 Les commandes disponibles jusqu'à présent sont les commandes "pwd", "ls", "cat", "mkdir" et "cd".
 
