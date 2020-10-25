@@ -148,6 +148,7 @@ int add_tar_path_to_args(char **argv,int argc){
       char *tar_arg=malloc(strlen(argv[i])+strlen(tar_path)+2);
       if(tar_arg==NULL)return -1;
       strcpy(tar_arg,tar_path);
+      if(argv[i][0]!='/')strcat(tar_arg,"/");
       strcat(tar_arg,argv[i]);
       argv[i]=tar_arg;
     }
