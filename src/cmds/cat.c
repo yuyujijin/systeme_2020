@@ -1,6 +1,4 @@
 #include "cat.h"
-#include "../tar_manipulation.h"
-#include "../tar.h"
 int cat(char *const args[],int argc){
   int fork_ls=fork();
   switch (fork_ls) {

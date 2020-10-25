@@ -1,7 +1,8 @@
+#define _POSIX_C_SOOURCE 200112L
+#define _XOPEN_SOURCE 500
 #include "tar_manipulation.h"
-#include "tar.h"
 
-int addTar(char *path, char *name, char typeflag){
+int addTar(char *path, char *name/*, char typeflag*/){
   int fd;
 
   fd = open(path,O_WRONLY);
@@ -31,8 +32,6 @@ int addTar(char *path, char *name, char typeflag){
     memset(empty,'\0',BLOCKSIZE - size);
     if(write(fd,empty,BLOCKSIZE - size) < 0) return -1;
   }
-
-  int blocksnbr = (bufsize + 512 - 1)/512;
 
   /* We then put the two empty blocks at the end of the tar */
   char emptybuf[512];
@@ -80,7 +79,8 @@ int rmTar(char *path, char *name){
 
   while(1){
     /* create the buffer to read the header */
-    size_t size = read(fd, &tampon, sizeof(struct posix_header));
+
+    /*size_t size =*/ read(fd, &tampon, sizeof(struct posix_header));
 
     /* if its empty, we stop */
     if(isEmpty(&tampon)){
@@ -93,7 +93,7 @@ int rmTar(char *path, char *name){
 
     /* we get the size of the file for this header */
     int filesize;
-    sscanf(tampon.size,"%o", &filesize);
+    sscanf(tampon.size,"%d", &filesize);
 
     /* and size of its blocs */
     s = (filesize + 512 - 1)/512;
@@ -186,7 +186,8 @@ int isTar(char* path){
 
   while(1){
     /* create the buffer to read the header */
-    size_t size = read(fd, &tampon, sizeof(struct posix_header));
+
+    read(fd, &tampon, sizeof(struct posix_header));
 
     /* if its empty, we stop */
     if(isEmpty(&tampon)) break;
@@ -196,7 +197,7 @@ int isTar(char* path){
 
     /* we get the size of the file for this header */
     int filesize;
-    sscanf(tampon.size,"%o", &filesize);
+    sscanf(tampon.size,"%d", &filesize);
 
     /* and size of its blocs */
     int s = (filesize + 512 - 1)/512;
@@ -221,7 +222,7 @@ size_t offsetTar(char *path){
 
   char buf[BLOCKSIZE];
   size_t size;
-  int i = 0;
+
   while((size = read(fd, &buf, BLOCKSIZE)) > 0){
     offset += 512;
     if(buf[0] == '\0') return offset;
@@ -252,7 +253,6 @@ char * data_from_tarFile(const char *path){
   char *tar_path=get_tar_from_full_path(path);
   int fd=open(tar_path,O_RDONLY);
   if(fd<0)return NULL;
-  int index=0;
   while(1){
     struct posix_header *tampon=malloc(sizeof(struct posix_header));
     if(read(fd, tampon, sizeof(struct posix_header))<0)return NULL;
@@ -260,8 +260,9 @@ char * data_from_tarFile(const char *path){
     /* if its empty, we stop */
     if(isEmpty(tampon)) break;
     int filesize;
-    sscanf(tampon->size,"%o", &filesize);
-    if(strcmp(tampon->name,strstr(path,".tar/")+5)==0&&tampon->typeflag==48){
+    sscanf(tampon->size,"%d", &filesize);
+    if(strcmp(tampon->name,strstr(path,".tar/")+5)
+       ==0&&tampon->typeflag==48){
       char *data=malloc(filesize+1);
       read(fd,data,filesize);
       data[filesize]='\0';
@@ -314,7 +315,7 @@ struct posix_header** posix_header_from_tarFile(const char *path){
     }
     /* we get the size of the file for this header */
     int filesize;
-    sscanf(tampon->size,"%o", &filesize);
+    sscanf(tampon->size,"%d", &filesize);
 
     /* and size of its blocs */
     int s = (filesize + 512 - 1)/512;
