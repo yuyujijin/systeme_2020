@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,12 +6,13 @@
 #include <sys/wait.h>
 
 #define MAX_SIZE 256
-#define BOLDGREEN "\e[1;32m"
-#define BOLDBLUE "\e[1;34m"
-#define RESET "\e[0m"
+#define BOLDGREEN "\x1B[1;32m"
+#define BOLDBLUE "\x1B[1;34m"
+#define RESET "\x1B[0m"
 
-/* str_cut takes a input string of size length, and returns a array of string containing
-the sub-string of input_str delimited by tokens (number of sub-string is given by arc) */
+/* str_cut takes a input string of size length, and returns 
+a array of string containingthe sub-string of input_str delimited 
+by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char token,size_t length, int* argc);
 
 /* execute cmd argv[0] with its args */
@@ -26,7 +28,6 @@ char* read_line();
 int one_of_args_is_tar(char **argv, int argc);
 
 int main(){
-  size_t size;
   char* line;
 
   /* environnement variable that store the additional path */
@@ -35,9 +36,10 @@ int main(){
   while(1){
     char bgnline[256];
     char *cwd = getcwd(NULL, 0);
-    sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
+    sprintf(bgnline, "%s%s%s:%s%s%s$ ", BOLDGREEN, getlogin(), RESET,
+	    BOLDBLUE, cwd, RESET);
 
-    write(STDIN_FILENO,bgnline,strlen(bgnline));
+    write(STDIN_FILENO, bgnline, strlen(bgnline));
 
     /* read next line */
     line = read_line();
@@ -51,10 +53,13 @@ int main(){
     if(strcmp(args[0],"exit") == 0) exit(0);
 
     /* in case we're in a tarball */
-    if(strstr(getenv("TARPATH"),".tar") != NULL || one_of_args_is_tar(args + 1, argc -1)){
-      if(execute_tar_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
+    if(strstr(getenv("TARPATH"),".tar") != NULL
+       || one_of_args_is_tar(args + 1, argc -1)){
+      if(execute_tar_cmd(args) < 0)
+	printf("Commande %s non reconnue\n",args[0]);
     }else{
-      if(execute_cmd(args) < 0) printf("Commande %s non reconnue\n",args[0]);
+      if(execute_cmd(args) < 0)
+	printf("Commande %s non reconnue\n",args[0]);
     }
   }
 
@@ -84,7 +89,7 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
   if(words == NULL) return NULL;
 
   /* we go through the whole sentence */
-  int i = 0;
+  unsigned i = 0;
   while(i < length){
     /* if found the token, or a backspace delimiter */
     if(input_str[i] == token || input_str[i] == '\n'){

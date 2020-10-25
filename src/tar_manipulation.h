@@ -19,7 +19,7 @@ int isTar(char*);
 size_t offsetTar(char *path);
 
 /* reads from stdin and adds it to a tar */
-int addTar(char *path, char name[100],  char typeflag);
+int addTar(char *path, char name[100]/*,  char typeflag*/);
 
 /* removes file with corresponding name */
 int rmTar(char *path, char *name);
@@ -52,5 +52,14 @@ struct posix_header** posix_header_from_tarFile(const char *path);
   A methods that simply return 1 if path="a.tar" or path="a.tar/" and return 0 otherwise
 */
 int is_source(const char* path);
+<<<<<<< HEAD
+=======
+/*
+  Return the data of the file named path,
+  If path="a.tar/c" then return the data inside c,
+  If the file doesn't exist or path leads to a folder returns NULL
+*/
+char * data_from_tarFile(const char *path);
+>>>>>>> makefile
 
 #endif
