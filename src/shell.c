@@ -41,7 +41,8 @@ int main(){
     cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 2);
     strcat(cwd,"/");
     strcat(cwd,getenv("TARPATH"));
-    sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
+    sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),
+	    RESET,BOLDBLUE,cwd,RESET);
 
     write(STDIN_FILENO, bgnline, strlen(bgnline));
 

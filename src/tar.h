@@ -1,9 +1,6 @@
-<<<<<<< HEAD:src/cmds/tar.h
 #ifndef TAR_H
 #define TAR_H
-=======
 
->>>>>>> mkdir:src/tar.h
 /* tar Header Block, from POSIX 1003.1-1990.  */
 
 #define BLOCKSIZE 512
@@ -71,8 +68,6 @@ int check_checksum(struct posix_header *hd) {
   for (int i=0;i<8;i++) { sum += ' ' - hd->chksum[i]; }
   return (checksum == sum);
 }
-<<<<<<< HEAD:src/cmds/tar.h
 
 #endif
-=======
->>>>>>> mkdir:src/tar.h
+
