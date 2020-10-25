@@ -177,6 +177,10 @@ int isEmpty(struct posix_header* p){
 }
 
 int isTar(char* path){
+  /* issue where tar made with 'tar cvf ...' arent recognized as tar */
+  /* little hotfix for now */
+  return (strstr(path,".tar") != NULL);
+  
   struct posix_header tampon;
   int fd;
 
@@ -194,7 +198,6 @@ int isTar(char* path){
 
     /* if checksum fails, then its not a proper tar */
     if(check_checksum(&tampon) == 0) return 0;
-
 
     /* we get the size of the file for this header */
     int filesize;
@@ -348,6 +351,40 @@ struct posix_header** posix_header_from_tarFile(const char *path){
   }
   close(fd);
   return result;
+}
+
+int exists(char *tarpath, char *filename){
+  struct posix_header tampon;
+  int fd;
+
+  /* if the file doesnt exist (or cant be opened), then its not a tar */
+  fd = open(tarpath,O_RDONLY);
+  if(fd < 0) return 0;
+
+  while(1){
+    /* create the buffer to read the header */
+    read(fd, &tampon, sizeof(struct posix_header));
+
+    /* if its empty, we stop */
+    if(isEmpty(&tampon)) break;
+
+    if(strcmp(filename,tampon.name) == 0) return 1;
+
+    /* we get the size of the file for this header */
+    unsigned int filesize;
+    sscanf(tampon.size,"%o", &filesize);
+
+    /* and size of its blocs */
+    int s = (filesize + 512 - 1)/512;
+
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+  }
+
+  close(fd);
+
+  return 0;
 }
 
 int is_source(const char* path){

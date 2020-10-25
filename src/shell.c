@@ -4,14 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include "cmds/cd.h"
 
 #define MAX_SIZE 256
 #define BOLDGREEN "\x1B[1;32m"
 #define BOLDBLUE "\x1B[1;34m"
 #define RESET "\x1B[0m"
 
-/* str_cut takes a input string of size length, and returns 
-a array of string containingthe sub-string of input_str delimited 
+/* str_cut takes a input string of size length, and returns
+a array of string containingthe sub-string of input_str delimited
 by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char token,size_t length, int* argc);
 
@@ -36,8 +37,10 @@ int main(){
   while(1){
     char bgnline[256];
     char *cwd = getcwd(NULL, 0);
-    sprintf(bgnline, "%s%s%s:%s%s%s$ ", BOLDGREEN, getlogin(), RESET,
-	    BOLDBLUE, cwd, RESET);
+    cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 2);
+    strcat(cwd,"/");
+    strcat(cwd,getenv("TARPATH"));
+    sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
 
     write(STDIN_FILENO, bgnline, strlen(bgnline));
 
@@ -51,6 +54,13 @@ int main(){
     if(args == NULL) return -1;
 
     if(strcmp(args[0],"exit") == 0) exit(0);
+
+    /* specific case for cd, because we do not execute it */
+    if(strcmp(args[0],"cd") == 0){
+      if(args[1] == NULL) continue;
+      if(cd(args[1]) < 0) perror("cd");
+      continue;
+    }
 
     /* in case we're in a tarball */
     if(strstr(getenv("TARPATH"),".tar") != NULL

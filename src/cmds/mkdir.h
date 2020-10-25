@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <sys/wait.h>
 //#include "../tar.h"
-#include "../tar_manipulation.c"
+#include "../tar_manipulation.h"
 
 int mkdir_tar(const char* argv,int start);
 int has_tar(const char* argv);

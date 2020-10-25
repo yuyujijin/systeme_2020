@@ -1,26 +1,23 @@
 CC=gcc
-CFLAGS=-W -Wunused-value -Wall -ansi -pedantic -std=c99 
+CFLAGS=-W -Wunused-value -Wall -ansi -pedantic -std=c99
 LDFLAGS= -lm
 
-ALL=shell cmds/pwd cmds/ls cmds/cat cmds/mkdir 
+ALL=shell cmds/pwd cmds/ls cmds/cat cmds/mkdir
 all: $(ALL)
 
-shell: shell.c
+shell: tar.c tar_manipulation.c cmds/cd.c shell.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-
-%.o: %.c %.h
-	$(CC) $(CFLAGS) -o $@ -c $< $(LDFLAGS)
 
 cmds/pwd: cmds/pwd.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/ls: cmds/ls.o tar_manipulation.o
+cmds/ls: tar.c tar_manipulation.c cmds/ls.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/cat: cmds/cat.o tar_manipulation.o
+cmds/cat: tar.c tar_manipulation.c cmds/cat.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/mkdir: cmds/mkdir.o
+cmds/mkdir: tar.c tar_manipulation.c cmds/mkdir.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 .PHONY: clean cleanall
@@ -28,8 +25,7 @@ cmds/mkdir: cmds/mkdir.o
 clean:
 	rm -rf $(ALL)
 
-cleano: 
-	rm -rf *.o
+cleano:
+	rm -rf *.o cmds/*.o
 
 cleanall:clean cleano
-
