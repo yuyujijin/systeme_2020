@@ -184,7 +184,6 @@ int file_exists_in_tar(char* path, char* name){
   while(read(fd, &hd, sizeof(struct posix_header))){
     if(hd.name[0]=='\0')
       return 0;
-    printf("%s\n",hd.name);
     if(strcmp(name,hd.name)==0)  { close(fd); return 1;}
 
     int filesize;
