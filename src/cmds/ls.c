@@ -30,7 +30,7 @@ int ls(char *const args[],int argc){
                 }else if(i!=option&&execlp("ls","ls","-l",args[i],NULL)<0){
                   perror(args[i]);
                 }
-                if(write(1,"\n",1)<0)return -1;
+                if(i!=option&&write(1,"\n",1)<0)return -1;
                 exit(EXIT_SUCCESS);
                 break;
               default :wait(NULL);break;
