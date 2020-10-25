@@ -171,7 +171,7 @@ int execute_tar_cmd(char **argv){
 
 int one_of_args_is_tar(char **argv, int argc){
   for(int i = 0; i < argc; i++){
-    if(strstr(argv[i],".tar/") != NULL) return 1;
+    if(strstr(argv[i],".tar") != NULL) return 1;
   }
   return 0;
 }

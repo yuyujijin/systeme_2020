@@ -180,7 +180,7 @@ int isTar(char* path){
   /* issue where tar made with 'tar cvf ...' arent recognized as tar */
   /* little hotfix for now */
   return (strstr(path,".tar") != NULL);
-  
+
   struct posix_header tampon;
   int fd;
 
@@ -289,7 +289,7 @@ struct posix_header** posix_header_from_tarFile(const char *path){
   strcat(altpath,"/");
   char *tar_path=get_tar_from_full_path(path);
   /*If directory==1 then we are returning all the file inside path(a directory) which is inside the tar */
-  /*If file==1 then we are only returning the posix_header of a file with the path name*/
+  /*If source==1 then we are only returning the posix_header of all file inside a.tar (not the file in subdirectories)*/
   /*If both are zero then we are returning all the file inside "a.tar/." */
   int fd=open(tar_path,O_RDONLY);
   if(fd<0)return NULL;
@@ -303,14 +303,13 @@ struct posix_header** posix_header_from_tarFile(const char *path){
     /* if its empty, we stop */
     if(isEmpty(tampon)) break;
 
+    //we check if we're looking inside a directory inside the tar
+    //if not then if we're looking for a specific file
     if(source==0&&(strcmp(tampon->name,strstr(path,".tar/")+5)==0||strcmp(tampon->name,strstr(altpath,".tar/")+5)==0)){
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!! If you find a bug it might be here, the typeflag on my computer has a weird behavior !!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(tampon->typeflag==53){//on my computer a directory has the value 53 weird ...
+      if(tampon->typeflag=='5'){
         directory_name=tampon->name;
         directory=1;
-      }else if(tampon->typeflag==48){//we only want this file
+      }else if(tampon->typeflag=='0'){//we only want this file
         free(result);
         result=malloc(sizeof(struct posix_header));
         result[0]=tampon;
@@ -348,6 +347,11 @@ struct posix_header** posix_header_from_tarFile(const char *path){
         index++;
       }
     }
+  }
+  if(result==NULL&&(source=1||directory==1)){//we don't want to return null for an empty folder or an empty tar
+   result[0]="nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull";
+   //we return a posix_header filled with 128 "null" that should work out
+    //i know it's not pretty ...
   }
   close(fd);
   return result;
