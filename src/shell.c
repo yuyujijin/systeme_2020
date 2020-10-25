@@ -10,8 +10,8 @@
 #define BOLDBLUE "\x1B[1;34m"
 #define RESET "\x1B[0m"
 
-/* str_cut takes a input string of size length, and returns 
-a array of string containingthe sub-string of input_str delimited 
+/* str_cut takes a input string of size length, and returns
+a array of string containingthe sub-string of input_str delimited
 by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char token,size_t length, int* argc);
 
@@ -162,7 +162,7 @@ int execute_tar_cmd(char **argv){
 
 int one_of_args_is_tar(char **argv, int argc){
   for(int i = 0; i < argc; i++){
-    if(strstr(argv[i],".tar/") != NULL) return 1;
+    if(strstr(argv[i],".tar")!=NULL) return 1;
   }
   return 0;
 }
