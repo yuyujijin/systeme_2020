@@ -17,7 +17,7 @@ by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char token,size_t length, int* argc);
 
 /* execute cmd argv[0] with its args */
-int execute_cmd(char **argv,int argc);
+int execute_cmd(char **argv);
 
 /* same w/ tar */
 int execute_tar_cmd(char **argv,int argc);
@@ -74,7 +74,7 @@ int main(){
       if(execute_tar_cmd(args,argc) < 0)
 	printf("Commande %s non reconnue\n",args[0]);
     }else{
-      if(execute_cmd(args,argc) < 0)
+      if(execute_cmd(args) < 0)
 	printf("Commande %s non reconnue\n",args[0]);
     }
   }
@@ -157,7 +157,7 @@ int add_tar_path_to_args(char **argv,int argc){
 }
 
 
-int execute_cmd(char **argv,int argc){
+int execute_cmd(char **argv){
   int found, w;
 
   int r = fork();
