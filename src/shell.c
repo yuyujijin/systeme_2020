@@ -22,6 +22,13 @@ int execute_cmd(char **argv,int argc);
 /* same w/ tar */
 int execute_tar_cmd(char **argv,int argc);
 
+/*
+  modify argv[i] if we are inside a tar. if we did cd a.tar/b and then ls c
+  --> tar_path=a.tar/b && the commands that will be executed will be ls a.tar/b/c
+  since we added the TARPATH in the arguments
+*/
+int add_tar_path_to_args(char **argv,int argc);
+
 /* read_line read the next line from stdin */
 char* read_line();
 
@@ -126,11 +133,6 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
   return words;
 }
 
-/*
-  modify argv[i] if we are inside a tar. if we did cd a.tar/b and then ls c
-  --> tar_path=a.tar/b && the commands that will be executed will be ls a.tar/b/c
-  since we added the TARPATH in the arguments
-*/
 int add_tar_path_to_args(char **argv,int argc){
   char *tar_path=getenv("TARPATH");
   if(argc==1){//if we just say "ls" we gotta show what's inside the tarpath and not pdw
