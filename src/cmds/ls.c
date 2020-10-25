@@ -1,6 +1,5 @@
 #include "ls.h"
-#include "../tar_manipulation.h"
-#include "../tar.h"
+
 char *month[]={"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"};
 int ls(char *const args[],int argc){
   int fork_ls=fork();
