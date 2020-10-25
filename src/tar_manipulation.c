@@ -177,6 +177,10 @@ int isEmpty(struct posix_header* p){
 }
 
 int isTar(char* path){
+  /* issue where tar made with 'tar cvf ...' arent recognized as tar */
+  /* little hotfix for now */
+  return (strstr(path,".tar") != NULL);
+  
   struct posix_header tampon;
   int fd;
 
@@ -359,7 +363,7 @@ int exists(char *tarpath, char *filename){
 
   while(1){
     /* create the buffer to read the header */
-    size_t size = read(fd, &tampon, sizeof(struct posix_header));
+    read(fd, &tampon, sizeof(struct posix_header));
 
     /* if its empty, we stop */
     if(isEmpty(&tampon)) break;
@@ -367,7 +371,7 @@ int exists(char *tarpath, char *filename){
     if(strcmp(filename,tampon.name) == 0) return 1;
 
     /* we get the size of the file for this header */
-    int filesize;
+    unsigned int filesize;
     sscanf(tampon.size,"%o", &filesize);
 
     /* and size of its blocs */

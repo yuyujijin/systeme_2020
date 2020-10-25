@@ -60,4 +60,6 @@ int is_source(const char* path);
 */
 char * data_from_tarFile(const char *path);
 
+int exists(char* tarname, char* filename);
+
 #endif

@@ -1,6 +1,4 @@
 #include "cd.h"
-#include "tar_manipulation.c"
-#include <errno.h>
 
 /* take path (TARPATH), and modify tarname and newpath */
 int truncate_tarname_path(char *path, char **tarname, char **newpath);

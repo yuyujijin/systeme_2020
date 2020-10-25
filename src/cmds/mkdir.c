@@ -1,5 +1,12 @@
 #include "mkdir.h"
 
+int mkDir_call(int argc,const char** argv);
+
+int main(int argc, const char** argv)
+{
+  return mkDir_call(argc,argv);
+}
+
 int mkDir_call(int argc,const char** argv){
   //fork for exec "mkdir
   int fork_mkDir=fork();
@@ -8,7 +15,7 @@ int mkDir_call(int argc,const char** argv){
     case -1: //error
       perror("mkdir");
       exit(EXIT_FAILURE);
-    case 0: //son 
+    case 0: //son
       {
 	//if mkdir called without argument
 	if(argc==1)
@@ -26,7 +33,7 @@ int mkDir_call(int argc,const char** argv){
 	  {
 	    //if we're working in a regular path
 	    int tar_index=has_tar(argv[i]);
-	    if(!tar_index) 
+	    if(!tar_index)
 	      {
 		switch(fork())
 		  {
@@ -53,7 +60,7 @@ int mkDir_call(int argc,const char** argv){
 	      }
 	  }
 	exit(EXIT_SUCCESS);
-	break;  
+	break;
       }
     default: wait(NULL);break;
     }
@@ -103,7 +110,7 @@ int mkdir_tar(const char* argv,int start)
       perror("mkdir");
       exit(EXIT_FAILURE);
     }
-  
+
   if(!addDirTar(path,name)){
     perror("mkdir");
     exit(EXIT_FAILURE);
@@ -118,11 +125,11 @@ int addDirTar(char* path, char* name)
   fd = open(path,O_WRONLY | O_RDONLY);
   if(fd < 0) return 0;
 
-  //we get the offset right before the empty blocks 
+  //we get the offset right before the empty blocks
   size_t offt = offsetTar(path) - BLOCKSIZE*2;
-  // and we go there 
+  // and we go there
   lseek(fd,offt + BLOCKSIZE,SEEK_CUR);
-  
+
   //create new header for the new directory
   struct posix_header hd;
   memset(&hd,'\0',sizeof (struct posix_header));
@@ -148,16 +155,16 @@ int addDirTar(char* path, char* name)
   char emptybuf[512];
   memset(emptybuf,0,512);
   for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
-  
+
   close(fd);
   return 1;
-  
+
   return 0;
 }
 
-char *substr(const char *src,int start,int end) { 
+char *substr(const char *src,int start,int end) {
   char *dest=NULL;
-  if (end-start>0) {                   
+  if (end-start>0) {
     dest = malloc(end-start+1);
     if(dest==NULL) perror("mkdir");
     for(int i=0;i<end-start;i++){
@@ -165,7 +172,7 @@ char *substr(const char *src,int start,int end) {
     }
     dest[end]='\0';
   }
-  return dest;                            
+  return dest;
 }
 
 int file_exists_in_tar(char* path, char* name){
@@ -194,9 +201,4 @@ int file_exists_in_tar(char* path, char* name){
     free(temp);
   }
   return 0;
-}
-
-int main(int argc, const char** argv)
-{
-  return mkDir_call(argc,argv);
 }
