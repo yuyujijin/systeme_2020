@@ -20,7 +20,14 @@ char** str_cut(char *input_str, char token,size_t length, int* argc);
 int execute_cmd(char **argv);
 
 /* same w/ tar */
-int execute_tar_cmd(char **argv);
+int execute_tar_cmd(char **argv,int argc);
+
+/*
+  modify argv[i] if we are inside a tar. if we did cd a.tar/b and then ls c
+  --> tar_path=a.tar/b && the commands that will be executed will be ls a.tar/b/c
+  since we added the TARPATH in the arguments
+*/
+int add_tar_path_to_args(char **argv,int argc);
 
 /* read_line read the next line from stdin */
 char* read_line();
@@ -52,7 +59,6 @@ int main(){
     int argc;
     char **args = str_cut(line,' ', strlen(line), &argc);
     if(args == NULL) return -1;
-
     if(strcmp(args[0],"exit") == 0) exit(0);
 
     /* specific case for cd, because we do not execute it */
@@ -65,7 +71,7 @@ int main(){
     /* in case we're in a tarball */
     if(strstr(getenv("TARPATH"),".tar") != NULL
        || one_of_args_is_tar(args + 1, argc -1)){
-      if(execute_tar_cmd(args) < 0)
+      if(execute_tar_cmd(args,argc) < 0)
 	printf("Commande %s non reconnue\n",args[0]);
     }else{
       if(execute_cmd(args) < 0)
@@ -127,6 +133,30 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
   return words;
 }
 
+int add_tar_path_to_args(char **argv,int argc){
+  char *tar_path=getenv("TARPATH");
+  if(argc==1){//if we just say "ls" we gotta show what's inside the tarpath and not pdw
+    argc+=1;
+    char *cmd=argv[0];
+    if(argv==NULL)return -1;
+    argv[0]=cmd;
+    argv[1]=tar_path;
+    return 0;
+  }
+  for(int i=1;i<argc;i++){
+    if(argv[i][0]!='-'){//we don't take option only path
+      char *tar_arg=malloc(strlen(argv[i])+strlen(tar_path)+2);
+      if(tar_arg==NULL)return -1;
+      strcpy(tar_arg,tar_path);
+      if(argv[i][0]!='/')strcat(tar_arg,"/");
+      strcat(tar_arg,argv[i]);
+      argv[i]=tar_arg;
+    }
+  }
+  return 0;
+}
+
+
 int execute_cmd(char **argv){
   int found, w;
 
@@ -145,15 +175,16 @@ int execute_cmd(char **argv){
   return 1;
 }
 
-int execute_tar_cmd(char **argv){
+int execute_tar_cmd(char **argv,int argc){
   int found, w;
-
   char* new_argv0 = malloc(sizeof(char) * (strlen(argv[0]) + 2 + 1));
   memset(new_argv0,'\0',(strlen(argv[0]) + 7 + 1));
   strcat(new_argv0,"cmds/./");
   strcat(new_argv0,argv[0]);
   argv[0] = new_argv0;
-
+  if(strstr(getenv("TARPATH"),".tar") != NULL){
+    if(add_tar_path_to_args(argv,argc)<0)return -1;
+  }
   int r = fork();
   /* exit option */
   switch(r){

@@ -349,7 +349,7 @@ struct posix_header** posix_header_from_tarFile(const char *path){
     }
   }
   if(result==NULL&&(source=1||directory==1)){//we don't want to return null for an empty folder or an empty tar
-   result[0]="nullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnullnull";
+   memset(result[0],'\0',128);
    //we return a posix_header filled with 128 "null" that should work out
     //i know it's not pretty ...
   }
