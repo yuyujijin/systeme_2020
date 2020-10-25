@@ -40,7 +40,7 @@ int ls(char *const args[],int argc){
           else if(tarIndex[i]==1){
             if(ls_tar(args[i],option)<0){
               write(1,"ls: Impossible d'accéder à '",29);
-              write(1,args[i],sizeof(args[i]));
+              write(1,args[i],strlen(args[i]));
               write(1,"': Aucun fichier ou dossier de ce type\n",39);
             }
             if(write(1,"\n",1)<0)return -1;
@@ -104,6 +104,7 @@ int maxNbDigit(struct posix_header** posix_header){// {1234,12,1} return 4
   int max=0;
   for(int i=0;posix_header[i]!=NULL;i++){
     int s=strtol(posix_header[i]->size,NULL,0);
+    if(posix_header[i]->typeflag=='5')s=4096;
     if(max<nbDigit(s))max=nbDigit(s);
   }
   return max;
