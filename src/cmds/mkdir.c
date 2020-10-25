@@ -1,5 +1,4 @@
 #include "mkdir.h"
-#include"../tar_manipulation.c"
 
 int mkDir_call(int argc,const char** argv){
   //fork for exec "mkdir
@@ -27,7 +26,6 @@ int mkDir_call(int argc,const char** argv){
 	  {
 	    //if we're working in a regular path
 	    int tar_index=has_tar(argv[i]);
-	    printf("%d\n",tar_index);
 	    if(!tar_index) 
 	      {
 		switch(fork())
@@ -64,10 +62,10 @@ int mkDir_call(int argc,const char** argv){
 
 int has_tar(const char* argv)
 {
-  //loop until |argv|-5 if we want creat a
+  //loop until |argv|-5 if we want create a
   //directory "xxx.tar"
   if(strlen(argv)<5) return 0;
-  for(int i=0;i<strlen(argv)-5;i++)
+  for(unsigned i=0;i<strlen(argv)-5;i++)
     {
       if(argv[i]=='.' && argv[i+1]=='t' && argv[i+2]=='a' && argv[i+3]=='r'){
 	//check if the path is a directory name "xxx.tar" or just
@@ -75,6 +73,7 @@ int has_tar(const char* argv)
 	int fd=open(substr(argv,0,i+5),O_DIRECTORY);
 	if (fd<0){
 	  close(fd);
+	  //return index of path after "XX.tar/"
 	  return i+5;
 	}
       }
@@ -84,18 +83,20 @@ int has_tar(const char* argv)
 
 int mkdir_tar(const char* argv,int start)
 {
-  //if directory already exists in the tar
-  
+  //name is the name of the directory in the tar
   char* name=malloc(strlen(argv)-start+1);
   memset(name,'\0',strlen(argv)-start+1);
   memcpy(name,argv+start,strlen(argv)-start+1);
-  
+
+  //needs to end by '/'
   if(argv[strlen(argv)-1]!='/')
     name[strlen(name)]='/';
 
+  //path is the path of the tarball
   char *path=malloc(strlen(argv)-start+1);
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
-  //printf("name: %s\npath: %s\n",name,path);
+
+  //check if the path exists in the tarball
   if(file_exists_in_tar(path,name))
     {
       errno=17;
@@ -126,7 +127,7 @@ int addDirTar(char* path, char* name)
   struct posix_header hd;
   memset(&hd,'\0',sizeof (struct posix_header));
 
-  size_t size = read(fd, &hd, sizeof(struct posix_header));
+  read(fd, &hd, sizeof(struct posix_header));
 
   memset(&(hd.name),'\0',100);
   memcpy(hd.name, name, strlen(name)+1);
@@ -147,7 +148,6 @@ int addDirTar(char* path, char* name)
   char emptybuf[512];
   memset(emptybuf,0,512);
   for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
-  printf("EEHHHHHHOOOOHHH\n");
   
   close(fd);
   return 1;
@@ -173,14 +173,22 @@ int file_exists_in_tar(char* path, char* name){
   int fd;
 
   fd = open(path,O_RDONLY);
-
-  while(hd.name[0]!='\0'){
-    size_t size = read(fd, &hd, sizeof(struct posix_header));
-
+  //if tarball path doesn't exist
+  if(fd<0)
+    {
+      close(fd);
+      errno=17;
+      perror("mkdir");
+      exit(EXIT_FAILURE);
+    }
+  while(read(fd, &hd, sizeof(struct posix_header))){
+    if(hd.name[0]=='\0')
+      return 0;
+    printf("%s\n",hd.name);
     if(strcmp(name,hd.name)==0)  { close(fd); return 1;}
 
     int filesize;
-    sscanf(hd.size,"%o", &filesize);
+    sscanf(hd.size,"%d", &filesize);
     int s = (filesize + 512 - 1)/512;
     struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
     read(fd, temp, s * BLOCKSIZE);
@@ -189,57 +197,7 @@ int file_exists_in_tar(char* path, char* name){
   return 0;
 }
 
-/*
-int nextSpace(const char* path,int index)
-{
-  for(int i=index;i<strlen(path)+1;i++)
-    {
-      if(path[i]==' '||path[i]=='\0'){
-	return i;
-      }
-    }
-  return index;
-}
-
-int mkDirectory(const char* argv)
-{
-  char path[PATH_MAX+1];//directory path
-  snprintf(path, PATH_MAX + 1,"%s",argv);
-
-  struct stat stDir;
- 
-  if(stat(path, &stDir)==-1) //if name doesn't exist
-    {
-      if(mkdir(path, 0755) == -1) perror("mkdir");
-      return 1;
-    }
-  else
-    {
-      errno=17;
-      perror("mkdir");
-      return -1;
-    }
-}
-
-int splitMkDir(const char* argv)
-{
-  int start=0;
-  int end;
-  while(start<strlen(argv))
-    {
-      end=nextSpace(argv, start);
-      mkDirectory(substr(argv,start,end));
-      start=end+1;
-    }
-}
-*/
 int main(int argc, const char** argv)
 {
-  //erreur si zero argument à voir au moment du lien
-  mkDir_call(argc,argv);
-
-  //perror(cmd);
-  
-  //printf("%s\n",cmd);
-  return 0;
+  return mkDir_call(argc,argv);
 }
