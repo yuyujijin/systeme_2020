@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../tar_manipulation.c"
+#include "../tar_manipulation.h"
 
 int cd(char *path);
 

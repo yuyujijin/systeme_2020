@@ -359,7 +359,7 @@ int exists(char *tarpath, char *filename){
 
   while(1){
     /* create the buffer to read the header */
-    size_t size = read(fd, &tampon, sizeof(struct posix_header));
+    read(fd, &tampon, sizeof(struct posix_header));
 
     /* if its empty, we stop */
     if(isEmpty(&tampon)) break;
@@ -368,7 +368,7 @@ int exists(char *tarpath, char *filename){
 
     /* we get the size of the file for this header */
     int filesize;
-    sscanf(tampon.size,"%o", &filesize);
+    sscanf(tampon.size,"%d", &filesize);
 
     /* and size of its blocs */
     int s = (filesize + 512 - 1)/512;
