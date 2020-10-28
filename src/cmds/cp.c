@@ -45,9 +45,8 @@ int cp_2args(char **argv){
     fd = open(elem,O_RDONLY);
     if(fd < 0) return -1;
 
-    while(size = read(fd,rd_buf,BUF_SIZE) > 0){
+    while((size = read(fd,rd_buf,BUF_SIZE)) > 0){
       write(fd_pipe[1], rd_buf, size);
-      memset(rd_buf,'\0',BUF_SIZE);
     }
     close(fd);
     close(fd_pipe[1]);
@@ -69,9 +68,8 @@ int cp_2args(char **argv){
     fd = open(elem,O_WRONLY | O_CREAT);
     if(fd < 0) return -1;
 
-    while(size = read(fd_pipe[1],rd_buf,BUF_SIZE) > 0){
+    while((size = read(fd_pipe[0],rd_buf,BUF_SIZE)) > 0){
       write(fd, rd_buf, size);
-      memset(rd_buf,'\0',BUF_SIZE);
     }
 
     close(fd);
