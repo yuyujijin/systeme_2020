@@ -2,7 +2,7 @@
 #define _XOPEN_SOURCE 500
 #include "tar_manipulation.h"
 
-int addTar(char *path, char *name/*, char typeflag*/){
+int addTar(const char *path, const char *name/*, char typeflag*/){
   int fd;
 
   fd = open(path,O_WRONLY);
@@ -61,6 +61,49 @@ int addTar(char *path, char *name/*, char typeflag*/){
   if(write(fd, &hd, sizeof(struct posix_header)) < 0) return -1;;
 
   close(fd);
+
+  return 1;
+}
+
+int rdTar(const char *path, const char *name){
+  struct posix_header tampon;
+  int fd, filesize, s;
+  char err[256];
+
+  /* if the file doesnt exist (or cant be opened), then its not a tar */
+  fd = open(path,O_RDONLY);
+  if(fd < 0) return -1;
+
+  while(1){
+    /* create the buffer to read the header */
+    if(read(fd, &tampon, sizeof(struct posix_header)) <= 0) return -1;
+
+    /* if its empty, we stop */
+    if(isEmpty(&tampon)) return -1;
+
+    /* we get the size of the file for this header */
+    filesize;
+    sscanf(tampon.size,"%d", &filesize);
+
+    /* and size of its blocs */
+    s = (filesize + 512 - 1)/512;
+
+    if(strcmp(tampon.name,name) == 0) break;
+
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+  }
+
+  char rd_buf[BLOCKSIZE];
+
+  for(int i = 0; i < s; i++){
+    size_t size;
+    if((size = (read(fd,rd_buf,BLOCKSIZE))) < 0) return -1;
+    if(filesize < BLOCKSIZE) size = filesize - 2;
+    if((write(STDIN_FILENO,rd_buf,size)) < 0) return -1;
+    filesize -= BLOCKSIZE;
+  }
 
   return 1;
 }
@@ -176,7 +219,7 @@ int isEmpty(struct posix_header* p){
   return 0;
 }
 
-int isTar(char* path){
+int isTar(const char* path){
   /* issue where tar made with 'tar cvf ...' arent recognized as tar */
   /* little hotfix for now */
   return (strstr(path,".tar") != NULL);
@@ -216,7 +259,7 @@ int isTar(char* path){
   return 1;
 }
 
-size_t offsetTar(char *path){
+size_t offsetTar(const char *path){
   int fd;
   int offset = 0;
 

@@ -13,13 +13,16 @@
 
 
 /* check for every header of a tar file if its checksum is correct */
-int isTar(char*);
+int isTar(const char*);
 
 /* returns the offset of the first empty block */
-size_t offsetTar(char *path);
+size_t offsetTar(const char *path);
 
 /* reads from stdin and adds it to a tar */
-int addTar(char *path, char name[100]/*,  char typeflag*/);
+int addTar(const char *path, const char *name);
+
+/* reads from a tar and write it in stdout */
+int rdTar(const char *path,const char *name);
 
 /* removes file with corresponding name */
 int rmTar(char *path, char *name);

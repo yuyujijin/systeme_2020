@@ -177,14 +177,14 @@ int execute_cmd(char **argv){
 
 int execute_tar_cmd(char **argv,int argc){
   int found, w;
-  char* new_argv0 = malloc(sizeof(char) * (strlen(argv[0]) + 2 + 1));
-  memset(new_argv0,'\0',(strlen(argv[0]) + 7 + 1));
-  strcat(new_argv0,"cmds/./");
-  strcat(new_argv0,argv[0]);
-  argv[0] = new_argv0;
-  if(strstr(getenv("TARPATH"),".tar") != NULL){
-    if(add_tar_path_to_args(argv,argc)<0)return -1;
-  }
+
+  char* newargv0 = malloc(sizeof(char) * (strlen(argv[0]) + strlen("cmds/./") + 1));
+  memset(newargv0, '\0', strlen(argv[0]) + strlen("cmds/./") + 1);
+  strcat(newargv0,"cmds/./");
+  strcat(newargv0,argv[0]);
+  strcat(newargv0,"\0");
+  argv[0] = newargv0;
+
   int r = fork();
   /* exit option */
   switch(r){
