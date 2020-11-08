@@ -25,7 +25,7 @@ int addTar(const char *path, const char *name);
 int rdTar(const char *path,const char *name);
 
 /* removes file with corresponding name */
-int rmTar(char *path, char *name);
+int rmTar(const char *path, const char *name);
 
 int isEmpty(struct posix_header*);
 

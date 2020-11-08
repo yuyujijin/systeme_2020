@@ -108,7 +108,7 @@ int rdTar(const char *path, const char *name){
   return 1;
 }
 
-int rmTar(char *path, char *name){
+int rmTar(const char *path, const char *name){
   struct posix_header tampon;
   int fd;
   char err[256];
