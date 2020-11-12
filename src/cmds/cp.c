@@ -97,14 +97,15 @@ int cp_2args(char **argv){
     default: close(fd_pipe[1]);
     elem = getLastArg(argv[1]);
 
+    printf("%s %s\n",argv[1],elem);
     /* if path argv[1] is more than just elem, we try to access the path */
     if(strlen(argv[1]) > strlen(elem)){
       if(strlen(argv[1]) > strlen(elem) + 1) argv[1][strlen(argv[1]) - strlen(elem)] = '\0';
+      printf("entering %s\n",argv[1]);
       if(cd(argv[1]) < 0){ perror("cp"); return -1; }
     }
 
     /* in case arg[1] is a dir, file is copied with its original name */
-    printf("%c\n",elem[strlen(elem) - 1]);
     if(elem[strlen(elem) - 1] == '/') elem = getLastArg(argv[0]);
 
 
