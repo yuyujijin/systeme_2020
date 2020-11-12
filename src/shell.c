@@ -211,7 +211,7 @@ int execute_tar_cmd(char **argv,int argc){
     wait(&w); break;
   }
 
-  free(new_argv0);
+  free(newargv0);
 
   return 1;
 }
