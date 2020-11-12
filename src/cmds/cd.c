@@ -20,7 +20,11 @@ int cd_aux(char *path){
   if(strlen(path) <= 0 || strcmp(path,"/") == 0) return 1;
 
   /* get first element of path */
-  char* elem = strtok(path,"/");
+  char pathcpy[strlen(path)];
+  memset(pathcpy,'\0',strlen(path));
+  strcpy(pathcpy,path);
+
+  char* elem = strtok(pathcpy,"/");
   if(elem == NULL) return -1;
 
   /* CASE 1 : WE'RE IN A TAR */
@@ -110,6 +114,7 @@ int cd_aux(char *path){
 
     strcat(newpath,elem);
     setenv("TARPATH", newpath,1);
+
     return cd_aux(path + strlen(elem) + 1);
   }
 

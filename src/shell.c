@@ -22,6 +22,8 @@ int execute_cmd(char **argv);
 /* same w/ tar */
 int execute_tar_cmd(char **argv,int argc);
 
+void printcwd();
+
 /*
   modify argv[i] if we are inside a tar. if we did cd a.tar/b and then ls c
   --> tar_path=a.tar/b && the commands that will be executed will be ls a.tar/b/c
@@ -42,14 +44,7 @@ int main(){
   setenv("TARPATH","",1);
 
   while(1){
-    char bgnline[256];
-    char *cwd = getcwd(NULL, 0);
-    cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 2);
-    strcat(cwd,"/");
-    strcat(cwd,getenv("TARPATH"));
-    sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
-
-    write(STDIN_FILENO, bgnline, strlen(bgnline));
+    printcwd();
 
     /* read next line */
     line = read_line();
@@ -59,6 +54,9 @@ int main(){
     int argc;
     char **args = str_cut(line,' ', strlen(line), &argc);
     if(args == NULL) return -1;
+
+    free(line);
+
     if(strcmp(args[0],"exit") == 0) exit(0);
 
     /* specific case for cd, because we do not execute it */
@@ -77,28 +75,43 @@ int main(){
       if(execute_cmd(args) < 0)
 	printf("Commande %s non reconnue\n",args[0]);
     }
+
+    for(int i = 0; i < argc; i++){
+      free(args[i]);
+    }
+    free(args);
   }
 
   write(STDIN_FILENO,"\n",2);
   return 0;
 }
 
+void printcwd(){
+  char bgnline[MAX_SIZE];
+  char *cwd = getcwd(NULL, 0);
+  cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 2);
+  strcat(cwd,"/");
+  strcat(cwd,getenv("TARPATH"));
+  sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
+
+  write(STDIN_FILENO, bgnline, strlen(bgnline));
+
+  free(cwd);
+}
+
 char *read_line(){
   char buf[MAX_SIZE];
-  size_t size;
+  memset(buf,'\0',MAX_SIZE);
+  read(STDIN_FILENO, buf, MAX_SIZE);
 
-  size = read(0,buf,MAX_SIZE);
-  if(size <= 0) return NULL;
-
-  /* take just the red part, store it in s and concatenate '\0' */
-  char* s = malloc(sizeof(char) * size + 1);
-  strncat(s, buf, size);
-  strcat(s, "\0");
+  char *s = malloc(sizeof(char) * (strlen(buf)));
+  memset(s,'\0',strlen(buf));
+  strcpy(s,buf);
 
   return s;
 }
 
-char** str_cut (char *input_str, char token, size_t length, int* argc){
+char** str_cut(char *input_str, char token, size_t length, int* argc){
   *argc = 0;
   int l = 0;
   char **words = malloc(sizeof(char*));
@@ -111,10 +124,10 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
     if(input_str[i] == token || input_str[i] == '\n'){
       /* allocate space for 1 more word, take it and store it in the array */
       words = realloc(words, (*argc + 1) * sizeof(char*));
-      char *w = malloc(sizeof(char) * l + 1);
+      char *w = malloc(sizeof(char) * l + 2);
       if(w == NULL) return NULL;
 
-      memset(w,'\0', sizeof(char) * l + 1);
+      memset(w,'\0', sizeof(char) * l + 2);
 
       strncat(w, input_str + i - l, l);
       strcat(w, "\0");
@@ -129,6 +142,7 @@ char** str_cut (char *input_str, char token, size_t length, int* argc){
   }
 
   words = realloc(words, (*argc + 1) * sizeof(char*));
+  words[*argc] = NULL;
 
   return words;
 }
@@ -196,6 +210,8 @@ int execute_tar_cmd(char **argv,int argc){
     default :
     wait(&w); break;
   }
+
+  free(new_argv0);
 
   return 1;
 }
