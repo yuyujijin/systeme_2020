@@ -50,6 +50,8 @@ int main(){
     line = read_line();
     if(line == NULL) break;
 
+    if(strlen(line) <= 0) continue;
+
     /* cut it in words array with space char delimiter */
     int argc;
     char **args = str_cut(line,' ', strlen(line), &argc);
@@ -76,9 +78,6 @@ int main(){
 	printf("Commande %s non reconnue\n",args[0]);
     }
 
-    for(int i = 0; i < argc; i++){
-      free(args[i]);
-    }
     free(args);
   }
 

@@ -1,4 +1,6 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
+#include <stdlib.h>
 #include "cd.h"
 
 #define BUF_SIZE 512
@@ -101,8 +103,10 @@ int cp_2args(char **argv){
       if(cd(argv[1]) < 0){ perror("cp"); return -1; }
     }
 
-    /* in case arg[2] is a dir, file is copied with its original name */
-    if(strchr(argv[1],'/') == NULL) elem = getLastArg(argv[0]);
+    /* in case arg[1] is a dir, file is copied with its original name */
+    printf("%c\n",elem[strlen(elem) - 1]);
+    if(elem[strlen(elem) - 1] == '/') elem = getLastArg(argv[0]);
+
 
     /* case 1 : we're in a tar */
     if(strcmp(getenv("TARPATH"),"") != 0){
@@ -113,7 +117,6 @@ int cp_2args(char **argv){
       const char* tarname = getTPTarName();
       const char* tpath = getTPPath(elem);
 
-      if(rmTar(tarname,tpath) < 0){ perror("cp"); return -1; }
       if(addTar(tarname,tpath) < 0){ perror("cp"); return -1; }
 
       /* reset */
@@ -126,7 +129,7 @@ int cp_2args(char **argv){
       return 1;
     }
     /* case 2 : we're not in a tar */
-    fd = open(elem,O_WRONLY | O_CREAT);
+    fd = open(elem,O_WRONLY | O_CREAT,"00777");
     if(fd < 0) return -1;
 
     while((size = read(fd_pipe[0],rd_buf,BUF_SIZE)) > 0){

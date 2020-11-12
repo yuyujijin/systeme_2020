@@ -68,7 +68,6 @@ int addTar(const char *path, const char *name/*, char typeflag*/){
 int rdTar(const char *path, const char *name){
   struct posix_header tampon;
   int fd, filesize, s;
-  char err[256];
 
   /* if the file doesnt exist (or cant be opened), then its not a tar */
   fd = open(path,O_RDONLY);
@@ -82,7 +81,6 @@ int rdTar(const char *path, const char *name){
     if(isEmpty(&tampon)) return -1;
 
     /* we get the size of the file for this header */
-    filesize;
     sscanf(tampon.size,"%d", &filesize);
 
     /* and size of its blocs */
@@ -98,7 +96,7 @@ int rdTar(const char *path, const char *name){
   char rd_buf[BLOCKSIZE];
 
   for(int i = 0; i < s; i++){
-    size_t size;
+    int size;
     if((size = (read(fd,rd_buf,BLOCKSIZE))) < 0) return -1;
     if(filesize < BLOCKSIZE) size = filesize - 2;
     if((write(STDIN_FILENO,rd_buf,size)) < 0) return -1;
