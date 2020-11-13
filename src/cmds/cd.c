@@ -101,8 +101,6 @@ int cd_aux(char *path){
     strcat(newpath,elem);
     setenv("TARPATH", newpath,1);
 
-    free(newpath);
-
     return cd_aux(path + strlen(elem) + 1);
   }
 

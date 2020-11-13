@@ -12,8 +12,8 @@ int cp_nargs(char **argv, int argc);
 /* returns the last arg of a path */
 char* getLastArg(char *path);
 
-const char* getTPTarName();
-const char* getTPPath(char *);
+char* getTPTarName();
+char* getTPPath(char *);
 
 int main(int argc, char**argv){
   if(argc < 3) return -1;
@@ -25,12 +25,12 @@ int cp_nargs(char **argv, int argc){
   for(int i = 0; i < argc - 1; i++){
     char *cp[2];
 
-    char *cp_1 = malloc((strlen(argv[i]) + 1) * sizeof(char));
+    char cp_1[strlen(argv[i]) + 1];
     strcpy(cp_1,argv[i]);
     strcat(cp_1,"\0");
     cp[0] = cp_1;
 
-    char *cp_2 = malloc((strlen(argv[argc - 1]) + 1) * sizeof(char));
+    char cp_2[strlen(argv[argc - 1]) + 1];
     strcpy(cp_2,argv[argc - 1]);
     strcat(cp_2,"\0");
     cp[1] = cp_2;
@@ -69,12 +69,15 @@ int cp_2args(char **argv){
     /* case 1 : we're in a tar */
     if(strcmp(getenv("TARPATH"),"") != 0){
       /* redirect stdout in the pipe entry and use rdTar */
-      const char* tarname = getTPTarName();
-      const char* tpath = getTPPath(elem);
+      char* tarname = getTPTarName();
+      char* tpath = getTPPath(elem);
       int old_stdin = dup(STDIN_FILENO);
       dup2(fd_pipe[1], STDIN_FILENO);
 
       if(rdTar(tarname,tpath) < 0){ perror("cp"); return -1; }
+
+      free(tarname);
+      free(tpath);
 
       close(fd_pipe[1]);
       /* reset */
@@ -94,20 +97,19 @@ int cp_2args(char **argv){
     exit(0);
     break;
 
-    default: close(fd_pipe[1]);
+    default:
+    close(fd_pipe[1]);
+
     elem = getLastArg(argv[1]);
 
-    printf("%s %s\n",argv[1],elem);
     /* if path argv[1] is more than just elem, we try to access the path */
-    if(strlen(argv[1]) > strlen(elem)){
-      if(strlen(argv[1]) > strlen(elem) + 1) argv[1][strlen(argv[1]) - strlen(elem)] = '\0';
-      printf("entering %s\n",argv[1]);
+    if(strchr(argv[1],'/') != NULL){
+      if(argv[1][strlen(argv[1]) - 1] != '/' && strlen(argv[1]) > strlen(elem) + 1) argv[1][strlen(argv[1]) - strlen(elem)] = '\0';
       if(cd(argv[1]) < 0){ perror("cp"); return -1; }
     }
 
     /* in case arg[1] is a dir, file is copied with its original name */
     if(elem[strlen(elem) - 1] == '/') elem = getLastArg(argv[0]);
-
 
     /* case 1 : we're in a tar */
     if(strcmp(getenv("TARPATH"),"") != 0){
@@ -115,14 +117,18 @@ int cp_2args(char **argv){
       int old_stdout = dup(STDOUT_FILENO);
       dup2(fd_pipe[0], STDOUT_FILENO);
 
-      const char* tarname = getTPTarName();
-      const char* tpath = getTPPath(elem);
+      char* tarname = getTPTarName();
+      char* tpath = getTPPath(elem);
+
 
       if(addTar(tarname,tpath) < 0){ perror("cp"); return -1; }
 
       /* reset */
       dup2(old_stdout,STDOUT_FILENO);
       close(fd_pipe[0]);
+
+      free(tarname);
+      free(tpath);
 
       chdir(pwd);
       setenv("TARPATH",tarpath,1);
@@ -145,18 +151,18 @@ int cp_2args(char **argv){
   return 1;
 }
 
-const char* getTPTarName(){
+char* getTPTarName(){
   char *tpath = malloc(sizeof(char) * strlen(getenv("TARPATH")));
   strcat(tpath, getenv("TARPATH"));
 
   return strtok(tpath,"/");
 }
 
-const char* getTPPath(char* elem){
+char* getTPPath(char* elem){
   char *tpath = malloc(sizeof(char) * strlen(getenv("TARPATH")));
   strcat(tpath, getenv("TARPATH"));
 
-  const char *firsttoken = strtok(tpath,"/");
+  char *firsttoken = strtok(tpath,"/");
 
   if(strlen(getenv("TARPATH")) == strlen(firsttoken)) return elem;
 
@@ -179,6 +185,16 @@ char* getLastArg(char *path){
     s = temp;
     temp = strtok(NULL,"/");
   }while(temp != NULL);
+
+  free(temp);
+
+  if(path[strlen(path) - 1] == '/'){
+    char *new_s = malloc((strlen(s) + 2) * sizeof(char));
+    strcpy(new_s,s);
+    strcat(new_s,"/");
+    strcat(new_s,"\0");
+    s = new_s;
+  }
 
   return s;
 }

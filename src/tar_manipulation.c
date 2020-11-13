@@ -218,9 +218,6 @@ int isEmpty(struct posix_header* p){
 }
 
 int isTar(const char* path){
-  /* issue where tar made with 'tar cvf ...' arent recognized as tar */
-  /* little hotfix for now */
-  return (strstr(path,".tar") != NULL);
 
   struct posix_header tampon;
   int fd;
@@ -228,6 +225,10 @@ int isTar(const char* path){
   /* if the file doesnt exist (or cant be opened), then its not a tar */
   fd = open(path,O_RDONLY);
   if(fd < 0) return 0;
+
+  /* issue where tar made with 'tar cvf ...' arent recognized as tar */
+  /* little hotfix for now */
+  return (strstr(path,".tar") != NULL);
 
   while(1){
     /* create the buffer to read the header */
