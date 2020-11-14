@@ -65,6 +65,39 @@ int addTar(const char *path, const char *name/*, char typeflag*/){
   return 1;
 }
 
+struct posix_header* getHeader(const char *path, const char *name){
+  struct posix_header *tampon = malloc(sizeof(struct posix_header));
+  int fd, filesize, s;
+
+  /* if the file doesnt exist (or cant be opened), then its not a tar */
+  fd = open(path,O_RDONLY);
+  if(fd < 0) return NULL;
+
+  while(1){
+    /* create the buffer to read the header */
+    if(read(fd, tampon, sizeof(struct posix_header)) <= 0) return NULL;
+
+    /* if its empty, we stop */
+    if(isEmpty(tampon)) return NULL;
+
+    /* we get the size of the file for this header */
+    sscanf(tampon->size,"%d", &filesize);
+
+    /* and size of its blocs */
+    s = (filesize + 512 - 1)/512;
+
+    if(strcmp(tampon->name,name) == 0){ close(fd); return tampon; }
+
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+  }
+
+  close(fd);
+
+  return NULL;
+}
+
 int rdTar(const char *path, const char *name){
   struct posix_header tampon;
   int fd, filesize, s;
@@ -102,6 +135,8 @@ int rdTar(const char *path, const char *name){
     if((write(STDIN_FILENO,rd_buf,size)) < 0) return -1;
     filesize -= BLOCKSIZE;
   }
+
+  close(fd);
 
   return 1;
 }

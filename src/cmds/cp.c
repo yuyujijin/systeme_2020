@@ -7,8 +7,12 @@
 
 /* copy arg[0] into path arg[1] */
 int cp_2args(char**);
+/* same as cp_2args but works with directories */
+int cp_r2args(char **);
 /* copy every args from argv[0] to argv[argc - 2] into argv[argc - 1] */
 int cp_nargs(char **argv, int argc);
+/* same as cp_nargs but works with directories */
+int cp_rnargs(char **argv, int argc)
 /* returns the last arg of a path */
 char* getLastArg(char *path);
 
@@ -17,6 +21,10 @@ char* getTPPath(char *);
 
 int main(int argc, char**argv){
   if(argc < 3) return -1;
+  if(strcmp(argv[1],"-r" == 0){
+    if(argc == 4) return cp_r2args(argv + 2);
+    return cp_rnargs(argc + 2, argc - 2);
+  }
   if(argc == 3) return cp_2args(argv + 1);
   return cp_nargs(argv + 1, argc - 1);
 }
@@ -74,6 +82,8 @@ int cp_2args(char **argv){
       int old_stdin = dup(STDIN_FILENO);
       dup2(fd_pipe[1], STDIN_FILENO);
 
+      struct posix_header* hd = getHeader(tarname,tpath);
+      if(hd != NULL && hd->typeflag == '5'){ perror("cp"); return -1; }
       if(rdTar(tarname,tpath) < 0){ perror("cp"); return -1; }
 
       free(tarname);
@@ -149,6 +159,14 @@ int cp_2args(char **argv){
   }
 
   return 1;
+}
+
+int cp_rnargs(char **argv, int argc){
+
+}
+
+int cp_r2args(char **argv){
+  
 }
 
 char* getTPTarName(){

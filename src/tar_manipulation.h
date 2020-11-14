@@ -21,6 +21,9 @@ size_t offsetTar(const char *path);
 /* reads from stdin and adds it to a tar */
 int addTar(const char *path, const char *name);
 
+/* returns the header with specifed name */
+struct posix_header* getHeader(const char *path, const char *name);
+
 /* reads from a tar and write it in stdout */
 int rdTar(const char *path,const char *name);
 
