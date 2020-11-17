@@ -17,7 +17,7 @@ by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char token,size_t length, int* argc);
 
 /* execute cmd argv[0] with its args */
-int execute_cmd(char **argv);
+int execute_cmd(char **argv,int argc);
 
 /* same w/ tar */
 int execute_tar_cmd(char **argv,int argc);
@@ -36,6 +36,29 @@ char* read_line();
 
 /* this function check if one of the args is looking INSIDE a tar */
 int one_of_args_is_tar(char **argv, int argc);
+
+/* let's say we have "cat a > b > c" then we fill int *out with
+  out[0] --> index of first occurence of '>'
+  out[1] -->  index of first argument after '>'
+  in our case we would have out={2,5}
+  We return -1 if any error occured
+  We also create a blank file(O_CREAT|O_TRUNC) each we pass an arguments after the first '>'
+  to duplicate this execution
+*/
+int redirection_out(char **argv,int argc,int *out){
+
+/* this function fill int* option with the index of all the option inside argv,
+   so if we have {"ls","a","-i",">","-a","b"} then option={2,4}
+   we return the number of option, if any error occured we return -1
+ */
+int get_option_index(char **argv,int argc,int *option)
+
+/* this function returns new_argv for redirection so if we have {"ls","a","b","c",">","d","e","f"} then we return {"ls","a","b","c"}
+   return NULL if any error occured
+ */
+char ** new_argv_redirection(char **argv,int argc,int* out)
+
+
 
 int main(){
   char* line;
@@ -72,7 +95,7 @@ int main(){
       if(execute_tar_cmd(args,argc) < 0)
 	printf("Commande %s non reconnue\n",args[0]);
     }else{
-      if(execute_cmd(args) < 0)
+      if(execute_cmd(args,argc) < 0)
 	printf("Commande %s non reconnue\n",args[0]);
     }
 
@@ -171,17 +194,108 @@ int add_tar_path_to_args(char **argv,int argc){
 }
 
 
-int execute_cmd(char **argv){
-  int found, w;
+int redirection_out(char **argv,int argc,int *out){//let's say we have "cat a > b > c" redirection_out returns the {2,5} as argv[5]="c" and argv[2]=">" so we can deduce which argument to execute and which to redirect
+  int index=-1;
+  int first_index=-1;
+  for(int i=1;i<argc;i++){
+      if(strcmp(argv[i],">")==0){//we don't break the loop cause we want the last redirection: cat a>b>c ---> "c"
+        if(first_index==-1)first_index=i;//we only want the first ">"
+        index=i;
+        if(i<argc-1){//this verification is in the case of "cat a > ": this is an error situation that we must check
+          int fd=open(argv[i+1],O_RDWR|O_CREAT|O_TRUNC,0644);//we create the file here but don't do the dup2 yet cause we only want the redirection to be on the last ">"
+          if(fd<0)return -1;
+          close(fd);
+        }
+      }
+  }
+  out[0]=first_index;
+  out[1]=index+1;
+  if(index>0)return index+1;
+  return 0;
+}
 
+int get_option_index(char **argv,int argc,int *option){
+  int count=0;
+  for(int i=1;i<argc;i++){
+    if(argv[i][0]=='-'){//we go with the standard that every option start with '-'
+      count+=1;
+    }
+  }
+  if(count==0)return 0;
+  option=malloc(sizeof(int)*count);
+  if(option==NULL)return -1;
+  int index_option=0;
+  for(int i=1;i<argc;i++){
+    if(argv[i][0]=='-'){//we go with the standard that every option start with '-'
+      option[index_option]=i;
+      index_option++;
+    }
+  }
+  return count;
+}
+
+char ** new_argv_redirection(char **argv,int argc,int* out){
+  int *option=NULL;//if we have redirection it's best to know the location of all the option since, we could have ls a > b -l
+  int nb_option=get_option_index(argv,argc,option);
+  if(nb_option<0)return NULL;
+  char **new_argv=malloc(out[0]+nb_option+1);
+  if(new_argv==NULL)return NULL;
+  int index_new_argv=0;
+  for(int i=0;i<out[0];i++){//we first copy all the argument before the first '>'
+    new_argv[index_new_argv]=malloc(strlen(argv[i])+1);
+    if(new_argv[index_new_argv]==NULL)return NULL;
+    strcpy(new_argv[index_new_argv],argv[i]);
+    new_argv[index_new_argv][strlen(argv[i])]='\0';
+    index_new_argv+=1;
+  }
+  if(nb_option>0){// we got option: "ls > b -l -p"
+    //we need to append to new_argv the option
+    for(int i=0;i<nb_option;i++){
+      new_argv[index_new_argv]=malloc(strlen(argv[option[i]])+1);
+      if(new_argv[index_new_argv]==NULL)return NULL;
+      strcpy(new_argv[index_new_argv],argv[option[i]]);
+      new_argv[index_new_argv][strlen(argv[option[i]])]='\0';
+      index_new_argv+=1;
+    }
+    //now we have: let's say "ls a -l > b -p > c d -f" then new_argv= {ls,a,-l,-p,-f}
+  }
+  new_argv[out[0]+nb_option]=NULL;//we must terminate with NULL
+  return new_argv;
+}
+int execute_cmd(char **argv,int argc){
+  int w;
+  int *out=malloc(2*sizeof(int));
   int r = fork();
   /* exit option */
   switch(r){
     case -1 : return -1;
     case 0 :
-    found = execvp(argv[0], argv);
-    if(found < 0) return -1;
-    return 1;
+      if(redirection_out(argv,argc,out)<0)exit(EXIT_FAILURE);//we got an error while opening the file
+      if(out[1]>0){
+        char **new_argv=new_argv_redirection(argv,argc,out);
+        if(new_argv==NULL)exit(EXIT_FAILURE);
+        int fd;
+        for(int i=out[1];i<argc;i++){//we do dup2 on every arguments after the last ">". Ex: "cat a > b c" --> we loop on b and c
+          int f=fork();
+          switch (f) {
+            case -1:return -1;
+            case  0:
+              fd=open(argv[i],O_RDWR|O_CREAT|O_TRUNC,0644);
+              if(fd<0)exit(EXIT_FAILURE);
+              dup2(fd,1);
+              dup2(fd,2);
+              if(execvp(new_argv[0],new_argv)<0)exit(EXIT_FAILURE);
+              close(fd);
+              exit(EXIT_SUCCESS);
+              break;
+            default :wait(NULL);break;
+          }
+        }
+      }
+      else{
+        if(execvp(argv[0],argv)<0)exit(EXIT_FAILURE);
+      }
+      exit(EXIT_SUCCESS);
     default :
     wait(&w); break;
   }
