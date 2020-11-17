@@ -42,6 +42,7 @@ int main(){
 
   /* environnement variable that store the additional path */
   setenv("TARPATH","",1);
+  setenv("TARNAME","",1);
 
   while(1){
     printcwd();
@@ -89,10 +90,8 @@ int main(){
 void printcwd(){
   char bgnline[MAX_SIZE];
   char *cwd = getcwd(NULL, 0);
-  cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 2);
-  strcat(cwd,"/");
-  strcat(cwd,getenv("TARPATH"));
-  sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
+  char *separator = (strlen(getenv("TARNAME")) > 0)? "/" : "";
+  sprintf(bgnline,"%s%s%s:%s%s%s%s%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,separator,getenv("TARNAME"),separator,getenv("TARPATH"),RESET);
 
   write(STDIN_FILENO, bgnline, strlen(bgnline));
 
