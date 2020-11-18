@@ -1,32 +1,14 @@
-#define _POSIX_C_SOURCE 200809L
-#include <unistd.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "../tar_manipulation.h"
-
-typedef struct special_path{
-  char *path;
-  char *tar_path;
-  char *tar_name;
-} special_path;
-
-/*
-path_simplifier will simplify the specified path (removing '..', '.' and '/' when possible)
-and return a struct containing the new path, the tarball's path and the tarball's name
-
-it works using a LIFO structure (a stack), and adding every words from path in it, and creating a struct special_path from it
-*/
-struct special_path path_simplifier(char* path);
-/* get_full_path concatenates tar_path + "/" + path */
-char* get_full_path(char *path, char *tar_path);
+#include "cd.h"
 
 int cd(char *path){
+  char *pathcpy = strdup(path);
+
   char *tar_name = getenv("TARNAME");
   char *tar_path = getenv("TARPATH");
-  char *fp = get_full_path(get_full_path(path,tar_path),tar_name);
+  char *fp = get_full_path(get_full_path(pathcpy,tar_path),tar_name);
   special_path sp = path_simplifier(fp);
   free(fp);
+
   /*
   now we have just to check if :
     - sp.tar_path contains ".tar" -> error (no tar in tar)
@@ -40,7 +22,7 @@ int cd(char *path){
   memset(tarball_path,'\0',strlen(sp.path) + strlen(sp.tar_name) + 1);
   strcat(tarball_path,sp.path); strcat(tarball_path,sp.tar_name); strcat(tarball_path,"\0");
   if(strlen(sp.tar_name) > 0 && !exists(tarball_path, sp.tar_path)) return -1;
-
+  
   if(strlen(sp.path) > 0 && chdir(sp.path) < 0) return -1;
   setenv("TARNAME",sp.tar_name,1);
   setenv("TARPATH",sp.tar_path,1);
@@ -56,6 +38,7 @@ char* get_full_path(char *path, char *tar_path){
   strcat(full_path,"/");
   strcat(full_path,path);
   strcat(full_path,"\0");
+  free(path); free(tar_path);
   return full_path;
 }
 
@@ -63,6 +46,7 @@ struct special_path path_simplifier(char* path){
   /* words will act as a lifo structure */
   char *words[64];
   int size = 0, pathsize = 0;
+
   char *w = strtok(path,"/");
 
   while ( w != NULL ) {

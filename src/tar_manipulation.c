@@ -361,8 +361,6 @@ int exists(char *tarpath, char *filename){
   struct posix_header tampon;
   int fd;
 
-  printf("%s %s\n",tarpath,filename);
-
   /* if the file doesnt exist (or cant be opened), then its not a tar */
   fd = open(tarpath,O_RDONLY);
   if(fd < 0) return 0;
