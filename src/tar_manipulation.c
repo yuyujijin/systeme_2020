@@ -22,7 +22,7 @@ int addTar(const char *path, const char *name/*, char typeflag*/){
   memset(buffer,'\0',BLOCKSIZE);
   size_t size;
   /* read everything from STDIN and write in the tarball */
-  while((size = read(1, buffer, BLOCKSIZE)) > 0){
+  while((size = read(STDIN_FILENO, buffer, BLOCKSIZE)) > 0){
     bufsize += size;
     if(write(fd,buffer,size) < 0) return -1;
   }
@@ -68,6 +68,7 @@ int addTar(const char *path, const char *name/*, char typeflag*/){
 struct posix_header* getHeader(const char *path, const char *name){
   struct posix_header *tampon = malloc(sizeof(struct posix_header));
   int fd, filesize, s;
+
 
   /* if the file doesnt exist (or cant be opened), then its not a tar */
   fd = open(path,O_RDONLY);
