@@ -1,110 +1,128 @@
 #include "cd.h"
 
 int cd(char *path){
-  if(strcmp(path,"~") == 0){ setenv("TARPATH", "", 1); return chdir(getenv("HOME")); }
-  char* pwd = getcwd(NULL, 0);
-  char* tarpwd = getenv("TARPATH");
-  /* first we try if we can access it */
-  if(cd_aux(path) >= 0) return 1;
-  /* if not, cancel every changes */
-  chdir(pwd);
-  setenv("TARPATH",tarpwd,1 );
-  return -1;
+  char *pathcpy = strdup(path);
+
+  char *tar_name = getenv("TARNAME");
+  char *tar_path = getenv("TARPATH");
+  char *fp = get_full_path(get_full_path(pathcpy,tar_path),tar_name);
+  special_path sp = path_simplifier(fp);
+  free(fp);
+
+  /*
+  now we have just to check if :
+    - sp.tar_path contains ".tar" -> error (no tar in tar)
+    - sp.path + sp.tar_name is a tar and contains sp.tar_path
+    - sp.path is accessible
+  if every of the above is ok, we access sp.path, modify the two env variable TARNAME and TARPATH with our values
+  */
+  if(strstr(sp.tar_path,".tar") != NULL){ errno = ENOTDIR; return -1; }
+
+  char tarball_path[strlen(sp.path) + strlen(sp.tar_name) + 1];
+  memset(tarball_path,'\0',strlen(sp.path) + strlen(sp.tar_name) + 1);
+  strcat(tarball_path,sp.path); strcat(tarball_path,sp.tar_name); strcat(tarball_path,"\0");
+  if(strlen(sp.tar_name) > 0 && !exists(tarball_path, sp.tar_path)){ errno = ENOENT;  return -1; }
+
+  if(strlen(sp.path) > 0 && chdir(sp.path) < 0) return -1;
+  setenv("TARNAME",sp.tar_name,1);
+  setenv("TARPATH",sp.tar_path,1);
+
+  return 0;
 }
 
-int cd_aux(char *path){
-  /* we 'empty' the whole path */
-  if(strlen(path) <= 0 || strcmp(path,"/") == 0) return 1;
+char* get_full_path(char *path, char *tar_path){
+  if(strlen(tar_path) == 0) return path;
+  char *full_path = malloc(strlen(path) + strlen(tar_path) + 1);
+  memset(full_path, '\0', strlen(path) + strlen(tar_path) + 2);
+  strcat(full_path,tar_path);
+  strcat(full_path,"/");
+  strcat(full_path,path);
+  strcat(full_path,"\0");
+  return full_path;
+}
 
-  /* get first element of path */
-  char pathcpy[strlen(path)];
-  memset(pathcpy,'\0',strlen(path));
-  strcpy(pathcpy,path);
+struct special_path path_simplifier(char* path){
+  /* words will act as a lifo structure */
+  char *words[64];
+  int size = 0, pathsize = 0;
 
-  char* elem = strtok(pathcpy,"/");
-  if(elem == NULL) return -1;
+  char *w = strtok(path,"/");
 
-  /* CASE 1 : WE'RE IN A TAR */
-  if(strstr(getenv("TARPATH"),".tar") != NULL){
-
-    /* CASE 1.1 : IS IT A TAR IN A TAR (FORBIDDEN!) */
-    if(strstr(elem,".tar") != NULL){ errno = EADDRNOTAVAIL; return -1; }
-
-    /* CASE 1.2 : "." (SAME DIR) */
-    /* we recall and skip elem + '/' */
-    if(strcmp(elem,".") == 0) return cd_aux(path + strlen(elem) + 1);
-		/* CASE 1.3 : ".." (PREV DIR) */
-    if(strcmp(elem,"..") == 0){
-      /* newpath will be path without the last dirname */
-      char newpath[strlen(getenv("TARPATH"))];
-      strcat(newpath, getenv("TARPATH"));
-      while(strlen(newpath) > 0 && newpath[strlen(newpath) - 1] != '/'){
-        newpath[strlen(newpath) - 1] = '\0';
+  while ( w != NULL ) {
+    /* if its ".", we do nothing */
+    if(strcmp(w,".") == 0){ w = strtok(NULL,"/"); continue; }
+    /*
+    if its ".." and :
+      (1) stack is empty -> we do nothing
+      (2) stack is not empty ->
+        - if top is ".." then we do nothing
+        - else we pop
+    */
+    if(strcmp(w,"..") == 0){
+      if(size > 0 && strcmp(words[size - 1],"..") != 0){
+        size--; pathsize -= strlen(words[size]) + 1; w = strtok(NULL, "/");
+        continue;
       }
-      newpath[strlen(newpath) - 1] = '\0';
-      setenv("TARPATH",newpath,1);
-
-      return cd_aux(path + strlen(elem) + 1);
     }
+    /* if its not "." nor ".." (or we didnt pushed ".."), we just add the word to the stack */
+    char *wc = malloc(strlen(w) + 1);
+    memset(wc,'\0',strlen(w) + 1);
+    strcpy(wc,w);
+    strcat(wc,"\0");
 
-	  /* CASE 1.4 : ANY DIRECTORY */
-    char tarpathcpy[strlen(getenv("TARPATH"))];
-    strcat(tarpathcpy, getenv("TARPATH"));
-
-    char *tarname = strtok(tarpathcpy,"/");
-
-    int size = strlen(elem) + 1;
-    if(strlen(getenv("TARPATH")) > strlen(tarname)) size+= strlen(tarname) + 1;
-
-    /* megapath is just tarpath + "/" + elem + "/" */
-    char megapath[size];
-    memset(megapath,'\0',size);
-
-    if(strlen(getenv("TARPATH")) > strlen(tarname)){ strcat(megapath,getenv("TARPATH") + strlen(tarname) + 1); strcat(megapath,"/");  }
-    strcat(megapath,elem);
-    strcat(megapath,"/");
-
-    /* check if this file exist in tarball */
-    if(exists(tarname, megapath) == 1){
-      /* if it is, we just update the env variabe TARPATH */
-      char newtarpath[strlen(tarname) + 1 + strlen(megapath)];
-      memset(newtarpath,'\0',strlen(tarname) + 1 + strlen(megapath));
-      megapath[strlen(megapath) - 1] = '\0';
-
-      strcat(newtarpath,tarname);
-      strcat(newtarpath,"/");
-      strcat(newtarpath,megapath);
-
-      setenv("TARPATH", newtarpath, 1);
-
-      return cd_aux(path + strlen(elem) + 1);
-    }
-
-		/* if not, we just return that we cant */
-    errno = ENOENT;
-    return -1;
-  }
-  /* CASE 2 :  WE'RE NOT IN TARBALL */
-
-  /* CASE 2.1 : WE'RE ENTERING A TAR */
-  if(strstr(elem,".tar") != NULL){
-    /* if its a FAKE tar */
-    if(!isTar(elem)){ errno = ENOENT; return -1; }
-
-    char* tarpath = getenv("TARPATH");
-    if(tarpath == NULL) return -1;
-
-    char *newpath = malloc((strlen(tarpath) + strlen(elem) + 2) * sizeof(char));
-    if(newpath == NULL) return -1;
-    memset(newpath,'\0',strlen(tarpath) + strlen(elem) + 2);
-
-    strcat(newpath,elem);
-    setenv("TARPATH", newpath,1);
-
-    return cd_aux(path + strlen(elem) + 1);
+    pathsize += strlen(wc) + 1;
+    words[size++] = wc;
+    w = strtok ( NULL, "/");
   }
 
-  /* CASE 2.2 : normal case */
-  if(chdir(elem) < 0) return -1;
-  return cd_aux(path + strlen(elem) + 1);
+  /* now we're going to create the 3 requiered strings */
+  /* we're going to look through every words of the stack, and act like this :
+    - if the words[i] is a tarball (contains ".tar"), then we put it in tar_name and say that tar is true
+    - if tar is false, then add words[i] to new_path
+    - else, add words[i] to tar_path
+  */
+  char *new_path = "",*tar_path = "",*tar_name = "";
+  int tar = 0, index_path = 0, index_tar = 0;
+  for(int i = 0; i < size; i++){
+    /* if we didnt went further than the tar (if there is one) */
+    if(!tar){
+      /* if words[i] is a tar */
+      if(strstr(words[i],".tar") != NULL){
+        tar_name = malloc(strlen(words[i]) + 1);
+        memset(tar_name,'\0',strlen(words[i]) + 1);
+        strcpy(tar_name, words[i]);
+        strcat(tar_name,"\0");
+        tar = 1; continue;
+      }
+      /* else we add the word to path */
+      int length = strlen(new_path);
+      if(length == 0){
+        new_path = malloc(sizeof(char) * (strlen(words[i]) + 2));
+      }else{
+        new_path = realloc(new_path, length + strlen(words[i]) + 2);
+      }
+      memset(new_path + length,'\0',strlen(words[i]) + 2);
+      strcat(new_path, words[i]);
+      strcat(new_path,"/");
+      strcat(new_path,"\0");
+      index_path++;
+    }else{
+      /* same as before, but in tar_path */
+      int length = strlen(tar_path);
+      if(length == 0){
+        tar_path = malloc(sizeof(char) * (strlen(words[i]) + 2));
+      }else{
+        tar_path = realloc(tar_path, length + strlen(words[i]) + 2);
+      }
+      memset(tar_path + length,'\0',strlen(words[i]) + 2);
+      strcat(tar_path, words[i]);
+      strcat(tar_path,"/");
+      strcat(tar_path,"\0");
+      index_tar++;
+    }
+    free(words[i]);
+  }
+  /* and we just create the struct */
+  special_path sp = { new_path, tar_path, tar_name };
+  return sp;
 }
