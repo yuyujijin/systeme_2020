@@ -16,13 +16,13 @@ int cd(char *path){
     - sp.path is accessible
   if every of the above is ok, we access sp.path, modify the two env variable TARNAME and TARPATH with our values
   */
-  if(strstr(sp.tar_path,".tar") != NULL) return -1;
+  if(strstr(sp.tar_path,".tar") != NULL){ errno = ENOTDIR; return -1; }
 
   char tarball_path[strlen(sp.path) + strlen(sp.tar_name) + 1];
   memset(tarball_path,'\0',strlen(sp.path) + strlen(sp.tar_name) + 1);
   strcat(tarball_path,sp.path); strcat(tarball_path,sp.tar_name); strcat(tarball_path,"\0");
-  if(strlen(sp.tar_name) > 0 && !exists(tarball_path, sp.tar_path)) return -1;
-  
+  if(strlen(sp.tar_name) > 0 && !exists(tarball_path, sp.tar_path)){ errno = ENOENT;  return -1; }
+
   if(strlen(sp.path) > 0 && chdir(sp.path) < 0) return -1;
   setenv("TARNAME",sp.tar_name,1);
   setenv("TARPATH",sp.tar_path,1);
@@ -38,7 +38,6 @@ char* get_full_path(char *path, char *tar_path){
   strcat(full_path,"/");
   strcat(full_path,path);
   strcat(full_path,"\0");
-  free(path); free(tar_path);
   return full_path;
 }
 
