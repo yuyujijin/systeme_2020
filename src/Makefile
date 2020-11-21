@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-W -Wunused-value -Wall -ansi -pedantic -std=c99
-LDFLAGS= -lm
+LDFLAGS= -lm -g
 
 ALL=shell cmds/pwd cmds/ls cmds/cat cmds/mkdir
 all: $(ALL)
