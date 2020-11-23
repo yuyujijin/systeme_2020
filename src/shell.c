@@ -326,8 +326,10 @@ int execute_tar_cmd(char **argv,int argc){
 
   int *out=malloc(4*sizeof(int));//{first index >,index after last >,first index >>,index after last  >>}
   int *in=malloc(2*sizeof(int));//{first index <,index after last <}
-  int redirect_pipe[2];
-  if(pipe(redirect_pipe)<0)return -1;
+  int redirect_pipe_out[2];
+  if(pipe(redirect_pipe_out)<0)return -1;
+  int redirect_pipe_in[2];
+  if(pipe(redirect_pipe_in)<0)return -1;
 
   char* new_argv0 = malloc(sizeof(char) * (strlen(argv[0]) + 2 + 1));
   memset(new_argv0,'\0',(strlen(argv[0]) + 7 + 1));
@@ -346,11 +348,15 @@ int execute_tar_cmd(char **argv,int argc){
         char **new_argv=new_argv_redirection(argv,argc);
         if(new_argv==NULL)exit(EXIT_FAILURE);
         if(out[1]>0||out[3]>0){//if there is an output redirection then we redirect the output to a pipe with dup2 and also an input redirection
-          close(redirect_pipe[0]);
-          dup2(redirect_pipe[1],1);
-          close(redirect_pipe[1]);
-        }else if(in[1]>0){
-        //TODO
+          close(redirect_pipe_out[0]);
+          dup2(redirect_pipe_out[1],1);
+          close(redirect_pipe_out[1]);
+        }if(in[1]>0){
+          char *data_tar=data_from_tarFile(argv[in[1]]);
+          if(write(redirect_pipe_in[1],data_tar,strlen(data_tar))<0)return -1;
+          close(redirect_pipe_in[1]);
+          dup2(redirect_pipe_in[0],0);
+          close(redirect_pipe_in[0]);
         }
         if(execvp(new_argv[0], new_argv)<0)exit(EXIT_FAILURE);
         exit(EXIT_SUCCESS);
@@ -359,12 +365,14 @@ int execute_tar_cmd(char **argv,int argc){
         exit(EXIT_SUCCESS);
       }
     default :
+      close(redirect_pipe_in[0]);
+      close(redirect_pipe_in[1]);
       wait(&w);
       if(out[1]>0||out[3]>0){
-        close(redirect_pipe[1]);
+        close(redirect_pipe_out[1]);
         int bytes_read=0;
         char data_tmp[BLOCKSIZE];
-        while((bytes_read=read(redirect_pipe[0],data_tmp,512))>0){
+        while((bytes_read=read(redirect_pipe_out[0],data_tmp,512))>0){
           char *data=malloc(bytes_read);
           strncpy(data,data_tmp,bytes_read);
           if(out[1]>0){
@@ -374,7 +382,7 @@ int execute_tar_cmd(char **argv,int argc){
           }
           memset(data_tmp,0,BLOCKSIZE);
         }
-        close(redirect_pipe[0]);
+        close(redirect_pipe_out[0]);
       }
       break;
   }
