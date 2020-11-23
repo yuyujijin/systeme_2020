@@ -350,9 +350,7 @@ int execute_tar_cmd(char **argv,int argc){
           dup2(redirect_pipe[1],1);
           close(redirect_pipe[1]);
         }else if(in[1]>0){
-          close(redirect_pipe[0]);
-          dup2(redirect_pipe[1],1);
-          close(redirect_pipe[1]);
+        //TODO
         }
         if(execvp(new_argv[0], new_argv)<0)exit(EXIT_FAILURE);
         exit(EXIT_SUCCESS);
