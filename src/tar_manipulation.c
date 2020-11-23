@@ -5,60 +5,46 @@
 int addTar(char *path, char *name/*, char typeflag*/){
   int fd;
 
-  fd = open(path,O_WRONLY);
+  fd = open(path,O_RDWR);
   if(fd < 0) return -1;
 
   if(!isTar(path)) return -1;
 
   /* we get the offset right before the empty blocks */
-  size_t offt = offsetTar(path) - BLOCKSIZE;
+  size_t offset =0;
+  struct posix_header p_temp;
+  while((read(fd,&p_temp, BLOCKSIZE))>0){
+    offset += 512;
+    if(p_temp.name[0]=='\0')break;
+    unsigned int filesize_temp=0;
+    sscanf(p_temp.size,"%o",&filesize_temp);
+    int nbBloc=(filesize_temp+BLOCKSIZE-1)/BLOCKSIZE;
+    offset+=nbBloc*BLOCKSIZE;
+    lseek(fd,nbBloc*BLOCKSIZE,SEEK_CUR);
+  }
   /* and we go there */
-  lseek(fd,offt + BLOCKSIZE,SEEK_CUR);
-
-  /* We use a bufer of size BLOCKSIZE bytes, that reads in STDIN while it can */
-  char buffer[BLOCKSIZE];
-  unsigned int bufsize = 0;
-  /* Put it at '\0' on every bytes, in case we didnt read 512 bytes */
-  memset(buffer,'\0',BLOCKSIZE);
-  size_t size;
-  /* read everything from STDIN and write in the tarball */
-  while((size = read(1, buffer, BLOCKSIZE)) > 0){
-    bufsize += size;
-    if(write(fd,buffer,size) < 0) return -1;
-  }
-  /* if the last red block is < BLOCKSIZE then we have to fill with '\0' */
-  if(size < BLOCKSIZE){
-    char empty[BLOCKSIZE - size];
-    memset(empty,'\0',BLOCKSIZE - size);
-    if(write(fd,empty,BLOCKSIZE - size) < 0) return -1;
-  }
-
-  /* We then put the two empty blocks at the end of the tar */
-  char emptybuf[512];
-  memset(emptybuf,0,512);
-  for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
-
-  /* we put ourselves just before the blocks we've written */
-  lseek(fd, offt,SEEK_SET);
+  lseek(fd,offset-BLOCKSIZE,SEEK_SET);
 
   /* Now we write the header */
-
   struct posix_header hd;
   memset(&hd,'\0',sizeof(struct posix_header));
 
   memcpy(hd.name, name, strlen(name) + 1);
-  sprintf(hd.mode,"0000700");
-
-  sprintf(hd.size, "%011o", bufsize);
-
-  hd.typeflag = 0;
+  sprintf(hd.mode,"0000644");
+  sprintf(hd.size, "%011o", 0);
+  hd.typeflag = '0';
   memcpy(hd.magic,"ustar",5);
   memcpy(hd.version,"00",2);
   set_checksum(&hd);
 
   if(check_checksum(&hd) < 0) return -1;
 
-  if(write(fd, &hd, sizeof(struct posix_header)) < 0) return -1;;
+  if(write(fd, &hd,BLOCKSIZE) < 0) return -1;
+
+  /* We then put the two empty blocks at the end of the tar */
+  char emptybuf[512];
+  memset(emptybuf,0,512);
+  for(int i = 0; i < 1; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
 
   close(fd);
 
@@ -90,11 +76,9 @@ int rmTar(char *path, char *name){
     };
 
     /* if checksum fails, then its not a proper tar */
-
     /* we get the size of the file for this header */
-    int filesize;
-    sscanf(tampon.size,"%d", &filesize);
-
+    unsigned int filesize;
+    sscanf(tampon.size,"%o", &filesize);
     /* and size of its blocs */
     s = (filesize + 512 - 1)/512;
 
@@ -103,13 +87,11 @@ int rmTar(char *path, char *name){
     /* we read them if order to "ignore them" (we SHOULD use seek here) */
     char temp[s * BLOCKSIZE];
     read(fd, temp, s * BLOCKSIZE);
-    offset += (s + 1) * BLOCKSIZE;
+    offset += (s+1) * BLOCKSIZE;
   }
 
-  offset = (offset > 0)? offset - BLOCKSIZE : 0;
-
+  offset = (offset > 0)? offset: 0;
   /* We're then gonna use a pipe in order to move data */
-
   int rd_offset = offset + (1 + s) * BLOCKSIZE;
 
   close(fd);
@@ -118,7 +100,7 @@ int rmTar(char *path, char *name){
   pipe(fd_pipe);
 
   char rd_buf[BLOCKSIZE];
-  memset(rd_buf,'\0',BLOCKSIZE);
+  // memset(rd_buf,'\0',BLOCKSIZE);
 
   switch(fork()){
     case -1: return -1;
@@ -127,7 +109,6 @@ int rmTar(char *path, char *name){
     fd = open(path, O_RDONLY);
     if(fd < 0) return -1;
     lseek(fd,rd_offset,SEEK_SET);
-
     /* no need to read in the pipe */
     close(fd_pipe[0]);
 
@@ -139,8 +120,7 @@ int rmTar(char *path, char *name){
     close(fd);
 
     /* the son leaves here */
-    exit(0);
-    break;
+    exit(EXIT_SUCCESS);
 
     /* father, reading data in the pipe, writing them in the file */
     default:
@@ -163,10 +143,6 @@ int rmTar(char *path, char *name){
   int tarsize = lseek(fd, 0, SEEK_END);
   if(ftruncate(fd, tarsize - (1 + s) * BLOCKSIZE) < 0) return -1;
   close(fd);
-
-  sprintf(err,"Le fichier %s a été supprimé avec succès de l'archive %s\n",name,path);
-  write(1,err,strlen(err));
-
   return 1;
 
 }
@@ -224,12 +200,15 @@ size_t offsetTar(char *path){
   fd = open(path,O_RDONLY);
   if(fd < 0) return -1;
 
-  char buf[BLOCKSIZE];
-  size_t size;
-
-  while((size = read(fd, &buf, BLOCKSIZE)) > 0){
+  struct posix_header p_temp;
+  while((read(fd,&p_temp, BLOCKSIZE))>0){
     offset += 512;
-    if(buf[0] == '\0') return offset;
+    if(p_temp.name[0]=='\0')break;
+    unsigned int filesize_temp=0;
+    sscanf(p_temp.size,"%o",&filesize_temp);
+    int nbBloc=(filesize_temp+BLOCKSIZE-1)/BLOCKSIZE;
+    offset+=nbBloc*BLOCKSIZE;
+    lseek(fd,nbBloc*BLOCKSIZE,SEEK_CUR);
   }
 
   close(fd);
@@ -263,12 +242,12 @@ char * data_from_tarFile(const char *path){
 
     /* if its empty, we stop */
     if(isEmpty(tampon)) break;
-    int filesize;
-    sscanf(tampon->size,"%d", &filesize);
+    unsigned int filesize;
+    sscanf(tampon->size,"%o", &filesize);
     if(strcmp(tampon->name,strstr(path,".tar/")+5)
-       ==0&&tampon->typeflag==48){
+       ==0&&tampon->typeflag=='0'){
       char *data=malloc(filesize+1);
-      read(fd,data,filesize);
+      if(read(fd,data,filesize)<0)return NULL;
       data[filesize]='\0';
       return data;
     }
@@ -280,6 +259,8 @@ char * data_from_tarFile(const char *path){
   }
   return NULL;
 }
+
+
 struct posix_header** posix_header_from_tarFile(const char *path){
   int directory=0;
   char *directory_name;//won't be used if directory==0
@@ -317,8 +298,8 @@ struct posix_header** posix_header_from_tarFile(const char *path){
       }
     }
     /* we get the size of the file for this header */
-    int filesize;
-    sscanf(tampon->size,"%d", &filesize);
+    unsigned int filesize;
+    sscanf(tampon->size,"%o", &filesize);
 
     /* and size of its blocs */
     int s = (filesize + 512 - 1)/512;
@@ -389,6 +370,67 @@ int exists(char *tarpath, char *filename){
   close(fd);
 
   return 0;
+}
+int write_in_tar(char *path,int fd_tar,char *data,int type_of_redirection){//fd_tar is the result of a previous open
+  if(fd_tar<0)return -1;//just to make sure
+  char *tar_name=get_tar_from_full_path(path);
+  char* file_inside_tar=strstr(path,".tar/")+5;
+  struct posix_header **posix_header=posix_header_from_tarFile(path);
+  if(type_of_redirection==1){//in the case of cat >> a.tar/b we only append so we gotta grab the old data
+    char *data_tmp=data_from_tarFile(path);
+    if(strlen(data_tmp)>0){
+      data_tmp=malloc(strlen(data)+strlen(data_tmp));
+      strcpy(data_tmp,data_from_tarFile(path));
+      strcat(data_tmp,data);
+      data_tmp[strlen(data)+strlen(data_tmp)]='\0';
+      data=data_tmp;
+    }
+  }
+  if(rmTar(tar_name,file_inside_tar)<0)return -1;//we delete it to recreate the effect of O_TRUNC
+
+  /* we get the offset right before the empty blocks */
+  /*when i use offsetTar(path) i get an error i think it's because since i'm opening the file again in the methods it messes up with everything so i'm just gonna copy the behavior of the methods in here*/
+
+  size_t offset=0;
+  lseek(fd_tar,0,SEEK_SET);
+  struct posix_header p_temp;
+  unsigned int filesize_temp=0;
+  while(read(fd_tar,&p_temp, BLOCKSIZE)>0){
+    offset += 512;
+    if(p_temp.name[0]=='\0')break;
+    sscanf(p_temp.size,"%o",&filesize_temp);
+    int nbBloc=(filesize_temp+BLOCKSIZE-1)/BLOCKSIZE;
+    offset+=nbBloc*BLOCKSIZE;
+    lseek(fd_tar,nbBloc*BLOCKSIZE,SEEK_CUR);
+  }
+  /* and we go there */
+  lseek(fd_tar,offset-BLOCKSIZE,SEEK_SET);
+  unsigned int filesize=strlen(data);
+  sprintf(posix_header[0]->size,"%011o",filesize);
+  set_checksum(posix_header[0]);
+  if(write(fd_tar,posix_header[0],BLOCKSIZE)<0)return -1;
+  if(write(fd_tar,data,strlen(data))<0)return -1;
+  if((strlen(data))%BLOCKSIZE>0){//we have a block with strlen(data)%BLOCKSIZE byte and we need to fill it with /0 until the whole block has data
+    char empty[BLOCKSIZE-(strlen(data)%BLOCKSIZE)];
+    memset(empty,'\0',BLOCKSIZE-(strlen(data)%BLOCKSIZE));
+    if(write(fd_tar,empty,BLOCKSIZE-(strlen(data)%BLOCKSIZE))<0) return -1;
+  }
+  // /* We then put the two empty blocks at the end of the tar */
+  char emptybuf[BLOCKSIZE];
+  memset(emptybuf,0,BLOCKSIZE);
+  for(int i = 0; i < 2; i++){ if(write(fd_tar, emptybuf,BLOCKSIZE) < 0) return -1; }
+  close(fd_tar);
+  return fd_tar;
+}
+int create_tar(char *path){
+  int fd=open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
+  if(fd<0)return -1;
+  char emptybuf[BLOCKSIZE];
+  memset(emptybuf,0,BLOCKSIZE);
+  for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,BLOCKSIZE) < 0) return -1; }
+  //this is use to create an empty tarfile
+  //the empty tarfile got only 2 empty block
+  return fd;
 }
 
 int is_source(const char* path){
