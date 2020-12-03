@@ -2,22 +2,22 @@ CC=gcc
 CFLAGS=-W -Wunused-value -Wall -ansi -pedantic -std=c99
 LDFLAGS= -lm -g
 
-ALL=shell cmds/pwd cmds/ls cmds/cat cmds/mkdir
+ALL=shell cmds/pwd_tar cmds/ls_tar cmds/cat_tar cmds/mkdir_tar
 all: $(ALL)
 
 shell: tar.c tar_manipulation.c cmds/cd.c shell.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/pwd: cmds/pwd.o
+cmds/pwd_tar: cmds/pwd.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/ls: tar.c tar_manipulation.c cmds/ls.o
+cmds/ls_tar: tar.c tar_manipulation.c cmds/ls.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/cat: tar.c tar_manipulation.c cmds/cat.o
+cmds/cat_tar: tar.c tar_manipulation.c cmds/cat.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/mkdir: tar.c tar_manipulation.c cmds/mkdir.o
+cmds/mkdir_tar: tar.c tar_manipulation.c cmds/mkdir.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 .PHONY: clean cleanall

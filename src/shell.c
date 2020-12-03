@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,7 +62,15 @@ int main(){
 
   /* environnement variable that store the additional path */
   setenv("TARPATH","",1);
-
+  char *pwd=malloc(strlen(getcwd(NULL,0))+strlen(getenv("PATH"))+2+5);
+  strcpy(pwd,getenv("PATH"));
+  strcat(pwd,":");
+  strcat(pwd,getcwd(NULL,0));
+  strcat(pwd,"/cmds");
+  strcat(pwd,"\0");
+  setenv("PATH",pwd,1);
+  free(pwd);
+  printf("%s\n",getenv("PATH"));
   while(1){
     printcwd();
 
@@ -332,9 +341,9 @@ int execute_tar_cmd(char **argv,int argc){
   if(pipe(redirect_pipe_in)<0)return -1;
 
   char* new_argv0 = malloc(sizeof(char) * (strlen(argv[0]) + 2 + 1));
-  memset(new_argv0,'\0',(strlen(argv[0]) + 7 + 1));
-  strcpy(new_argv0,"cmds/./");
-  strcat(new_argv0,argv[0]);
+  memset(new_argv0,'\0',(strlen(argv[0]) + 5));
+  strcpy(new_argv0,argv[0]);
+  strcat(new_argv0,"_tar");
   argv[0] = new_argv0;
   if(strstr(getenv("TARPATH"),".tar") != NULL){//we add the TARPATH to so we can execute from within a tar
     if(add_tar_path_to_args(argv,argc)<0)return -1;
@@ -364,7 +373,7 @@ int execute_tar_cmd(char **argv,int argc){
         if(execvp(argv[0], argv)<0)exit(EXIT_FAILURE);
         exit(EXIT_SUCCESS);
       }
-    default :
+    default:
       close(redirect_pipe_in[0]);
       close(redirect_pipe_in[1]);
       wait(&w);
@@ -383,6 +392,9 @@ int execute_tar_cmd(char **argv,int argc){
           memset(data_tmp,0,BLOCKSIZE);
         }
         close(redirect_pipe_out[0]);
+      }
+      if(WEXITSTATUS(w)==EXIT_FAILURE){
+        if(write(1,"The command couldn't be executed\n",34)<0)return  -1;
       }
       break;
   }
