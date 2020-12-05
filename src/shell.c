@@ -70,7 +70,6 @@ int main(){
   strcat(pwd,"\0");
   setenv("PATH",pwd,1);
   free(pwd);
-  printf("%s\n",getenv("PATH"));
   while(1){
     printcwd();
 
