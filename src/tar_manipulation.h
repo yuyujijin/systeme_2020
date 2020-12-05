@@ -1,5 +1,6 @@
 #ifndef TAR_MANIPULATION_H
 #define TAR_MANIPULATION_H
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -9,6 +10,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include "tar.h"
 
 
@@ -32,6 +34,10 @@ int isEmpty(struct posix_header*);
 */
 
 void has_Tar(char *const args[],int argc,int *tarIndex);// If args[0] has a tar in it's arguments then tarIndex[0]==1
+
+//check if argv has a tar (not a dir named xx.tar) and returns index after
+//xx.tar/
+int has_tar(const char* argv);
 
 
 /*
@@ -61,5 +67,9 @@ int is_source(const char* path);
 char * data_from_tarFile(const char *path);
 
 int exists(char* tarname, char* filename);
+
+char *substr(const char *src,int start,int end);
+
+int file_exists_in_tar(char* path, char* name);
 
 #endif

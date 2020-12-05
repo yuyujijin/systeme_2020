@@ -67,26 +67,7 @@ int mkDir_call(int argc,const char** argv){
   return 0;
 }
 
-int has_tar(const char* argv)
-{
-  //loop until |argv|-5 if we want create a
-  //directory "xxx.tar"
-  if(strlen(argv)<5) return 0;
-  for(unsigned i=0;i<strlen(argv)-5;i++)
-    {
-      if(argv[i]=='.' && argv[i+1]=='t' && argv[i+2]=='a' && argv[i+3]=='r'){
-	//check if the path is a directory name "xxx.tar" or just
-	//a tar
-	int fd=open(substr(argv,0,i+5),O_DIRECTORY);
-	if (fd<0){
-	  close(fd);
-	  //return index of path after "XX.tar/"
-	  return i+5;
-	}
-      }
-    }
-  return 0;
-}
+
 
 int mkdir_tar(const char* argv,int start)
 {
@@ -162,43 +143,4 @@ int addDirTar(char* path, char* name)
   return 0;
 }
 
-char *substr(const char *src,int start,int end) {
-  char *dest=NULL;
-  if (end-start>0) {
-    dest = malloc(end-start+1);
-    if(dest==NULL) perror("mkdir");
-    for(int i=0;i<end-start;i++){
-      dest[i]=src[start+i];
-    }
-    dest[end]='\0';
-  }
-  return dest;
-}
 
-int file_exists_in_tar(char* path, char* name){
-  struct posix_header hd;
-  int fd;
-
-  fd = open(path,O_RDONLY);
-  //if tarball path doesn't exist
-  if(fd<0)
-    {
-      close(fd);
-      errno=17;
-      perror("mkdir");
-      exit(EXIT_FAILURE);
-    }
-  while(read(fd, &hd, sizeof(struct posix_header))){
-    if(hd.name[0]=='\0')
-      return 0;
-    if(strcmp(name,hd.name)==0)  { close(fd); return 1;}
-
-    int filesize;
-    sscanf(hd.size,"%d", &filesize);
-    int s = (filesize + 512 - 1)/512;
-    struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
-    read(fd, temp, s * BLOCKSIZE);
-    free(temp);
-  }
-  return 0;
-}
