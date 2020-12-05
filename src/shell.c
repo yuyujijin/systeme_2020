@@ -70,7 +70,6 @@ int main(){
   strcat(pwd,"\0");
   setenv("PATH",pwd,1);
   free(pwd);
-  printf("%s\n",getenv("PATH"));
   while(1){
     printcwd();
 
@@ -180,9 +179,23 @@ int add_tar_path_to_args(char **argv,int argc){
   if(argc==1){//if we just say "ls" we gotta show what's inside the tarpath and not pdw
     argc+=1;
     char *cmd=argv[0];
+    argv=realloc(argv,sizeof(char*)*2);
     if(argv==NULL)return -1;
     argv[0]=cmd;
     argv[1]=tar_path;
+    argv[2]=NULL;
+    return 0;
+  }
+  if(argc==2&&strcmp(argv[1],"-l")==0){
+    char *cmd=argv[0];
+    char *option=argv[1];
+    argc+=1;
+    argv=realloc(argv,sizeof(char*)*3);
+    if(argv==NULL)return -1;
+    argv[0]=cmd;
+    argv[1]=option;
+    argv[2]=tar_path;
+    argv[3]=NULL;
     return 0;
   }
   for(int i=1;i<argc;i++){

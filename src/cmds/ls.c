@@ -7,7 +7,7 @@ int ls(char *const args[],int argc){
     case -1/* value */:perror("fork");exit(EXIT_FAILURE);
     case 0 :
       {
-        int option=has_option(args,argc);
+        int option=has_option(args,argc);//index of -l option
         int* tarIndex=malloc(sizeof(int)*argc);
         has_Tar(args,argc,tarIndex);
         if(argc==1){
@@ -21,7 +21,7 @@ int ls(char *const args[],int argc){
             if(write(1,":\n ",2)<0)return -1;
           }
           //if we're working with a regular path
-          if(tarIndex[i]==0){
+          if(tarIndex[i]==0&&(strstr(getenv("TARPATH"),".tar")==NULL)){
             switch(fork()){
               case -1:perror("fork_loop");exit(EXIT_FAILURE);
               case 0 :
@@ -56,7 +56,7 @@ int ls(char *const args[],int argc){
 
 int has_option(char *const args[],int argc){//if option<-1 then "ls" else "ls -l"
   for(int i=0;i<argc;i++){
-    if(strcmp(args[i],"-l")==0)return i;
+    if(strstr(args[i],"-l")!=NULL)return i;
   }
   return -1;
 }
