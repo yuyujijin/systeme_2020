@@ -8,7 +8,6 @@ int cd(char *path){
   char *fp = get_full_path(get_full_path(pathcpy,tar_path),tar_name);
   special_path sp = path_simplifier(fp);
   free(fp);
-
   /*
   now we have just to check if :
     - sp.tar_path contains ".tar" -> error (no tar in tar)
