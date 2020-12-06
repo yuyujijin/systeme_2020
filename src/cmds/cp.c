@@ -48,6 +48,32 @@ int cp_r(char **argv){
   if(cp_dir(last_arg_2, pathminus(argv[1],last_arg_2)) < 0) return -1;
   /* puis on parcours le dossier argv[1] pour tout x appartenant a argv[1],
   on rapelle cp_r (argv[0]/x, argv[1]/x) */
+
+  /* on va pour ça fork, envoyer le fils en cd argv[1], et pour tout les fichiers
+  /dossiers de argv[1], écrire leur nom dans un pipe précédé de la longueur du nom */
+  int w;
+  int pipe_fd[2];
+  pipe(pipe_fd);
+
+  switch(fork()){
+    case -1 : return -1;
+    case 0 :
+    close(pipe_fd[0]);
+    if(cd(argv[1]) < 0) exit(-1);
+    char *tarname = getenv("TARNAME");
+    /* cas d'un tar */
+    if(tarname != NULL && strlen(tarname) > 0){
+      //TODO...
+      // parcourir les fichiers du tar de la forme "tarpath_actuel/fichier"
+    /* cas d'un dossier 'normal' */
+    }else{
+      // parcour normal à l'aide d'une struct DIR
+    }
+    break;
+    default :
+    close(pipe_fd[1]);
+    break;
+  }
   return 0;
 }
 
