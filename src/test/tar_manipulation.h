@@ -19,7 +19,7 @@ int isTar(const char*);
 size_t offsetTar(const char *path);
 
 /* reads from stdin and adds it to a tar */
-int addTar(const char *path, const char *name, char typeflag, int empty);
+int addTar(const char *path, const char *name);
 
 /* returns the header with specifed name */
 struct posix_header* getHeader(const char *path, const char *name);

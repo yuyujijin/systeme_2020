@@ -2,7 +2,7 @@
 #define _XOPEN_SOURCE 500
 #include "tar_manipulation.h"
 
-int addTar(const char *path, const char *name, char typeflag, int empty){
+int addTar(const char *path, const char *name/*, char typeflag*/){
   int fd;
 
   fd = open(path,O_WRONLY);
@@ -20,31 +20,29 @@ int addTar(const char *path, const char *name, char typeflag, int empty){
   unsigned int bufsize = 0;
   /* Put it at '\0' on every bytes, in case we didnt read 512 bytes */
   memset(buffer,'\0',BLOCKSIZE);
-  /* if we arent writing an empty file */
-  if(!empty){
-
-    size_t size;
-    /* read everything from STDIN and write in the tarball */
-    while((size = read(STDIN_FILENO, buffer, BLOCKSIZE)) > 0){
-      bufsize += size;
-      if(write(fd,buffer,size) < 0) return -1;
-    }
-    /* if the last red block is < BLOCKSIZE then we have to fill with '\0' */
-    if(size < BLOCKSIZE){
-      char empty[BLOCKSIZE - size];
-      memset(empty,'\0',BLOCKSIZE - size);
-      if(write(fd,empty,BLOCKSIZE - size) < 0) return -1;
-    }
-
-    /* We then put the two empty blocks at the end of the tar */
-    char emptybuf[512];
-    memset(emptybuf,0,512);
-    for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
+  size_t size;
+  /* read everything from STDIN and write in the tarball */
+  while((size = read(STDIN_FILENO, buffer, BLOCKSIZE)) > 0){
+    bufsize += size;
+    if(write(fd,buffer,size) < 0) return -1;
   }
+  /* if the last red block is < BLOCKSIZE then we have to fill with '\0' */
+  if(size < BLOCKSIZE){
+    char empty[BLOCKSIZE - size];
+    memset(empty,'\0',BLOCKSIZE - size);
+    if(write(fd,empty,BLOCKSIZE - size) < 0) return -1;
+  }
+
+  /* We then put the two empty blocks at the end of the tar */
+  char emptybuf[512];
+  memset(emptybuf,0,512);
+  for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
+
   /* we put ourselves just before the blocks we've written */
   lseek(fd, offt,SEEK_SET);
 
   /* Now we write the header */
+
   struct posix_header hd;
   memset(&hd,'\0',sizeof(struct posix_header));
 
@@ -53,7 +51,7 @@ int addTar(const char *path, const char *name, char typeflag, int empty){
 
   sprintf(hd.size, "%011o", bufsize);
 
-  hd.typeflag = typeflag;
+  hd.typeflag = 0;
   memcpy(hd.magic,"ustar",5);
   memcpy(hd.version,"00",2);
   set_checksum(&hd);
