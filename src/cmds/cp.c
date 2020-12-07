@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wait.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "cd.h"
 
 #define BUF_SIZE 512
@@ -25,6 +28,7 @@ int readFileWritePipe(char *file_name, int tar, int pipe_fd);
 char *tarpathconcat(char *arg);
 int isDir(char *path);
 int cp_dir(char *dirname, char *path);
+
 int main(int argc, char**argv){
   if(argc < 3) return -1;
   setenv("TARNAME","",1);
@@ -38,20 +42,24 @@ int main(int argc, char**argv){
 }
 
 int cp_r(char **argv){
+  printf("%s : %s\n",argv[0],argv[1]);
   char *last_arg_2 = (strrchr(argv[1],'/') != NULL)? strrchr(argv[1],'/') : argv[1];
-
-  /* argv[1] n'est pas un dossier (= on ne peut pas y acceder ) */
-  /* alors on tente juste de copier argv[1] à argv[2] */
-  if(!isDir(argv[1])) return cp_2args(argv);
+  /* argv[0] n'est pas un dossier (= on ne peut pas y acceder ) */
+  /* alors on tente juste de copier argv[0] à argv[1] */
+  if(isDir(argv[0]) != 1) return cp_2args(argv);
   /* sinon on créer le dossier à l'adresse p2 */
   /* UTILISER MKDIR QUAND ELLE SERA PRETE */
-  if(cp_dir(last_arg_2, pathminus(argv[1],last_arg_2)) < 0) return -1;
+  int r = fork(), w;
+  switch(r){
+    case -1 : exit(-1);
+    case 0 : exit(cp_dir(last_arg_2, pathminus(argv[1],last_arg_2)));
+    default : waitpid(r,&w,0); break;
+  }
+  if(WEXITSTATUS(w) != 1) return -1;
   /* puis on parcours le dossier argv[1] pour tout x appartenant a argv[1],
   on rapelle cp_r (argv[0]/x, argv[1]/x) */
-
   /* on va pour ça fork, envoyer le fils en cd argv[1], et pour tout les fichiers
   /dossiers de argv[1], écrire leur nom dans un pipe précédé de la longueur du nom */
-  int w;
   int pipe_fd[2];
   pipe(pipe_fd);
 
@@ -59,32 +67,69 @@ int cp_r(char **argv){
     case -1 : return -1;
     case 0 :
     close(pipe_fd[0]);
-    if(cd(argv[1]) < 0) exit(-1);
+    if(cd(argv[0]) < 0) exit(-1);
     char *tarname = getenv("TARNAME");
     /* cas d'un tar */
     if(tarname != NULL && strlen(tarname) > 0){
       //TODO...
       // parcourir les fichiers du tar de la forme "tarpath_actuel/fichier"
+
     /* cas d'un dossier 'normal' */
     }else{
       // parcour normal à l'aide d'une struct DIR
+      DIR *dir = opendir(".");
+      if(dir == NULL){ return -1; }
+      struct dirent *f;
+      /* on parcours tout les fichiers du dossier et on écrit leur nom
+      precedé de leur taille */
+      while ((f = readdir(dir)) != NULL){
+        if(strcmp(f->d_name,".") != 0 && strcmp(f->d_name,"..") != 0){
+          char size[4];
+          memset(size,0,4);
+          sprintf(size,"%ld",strlen(f->d_name));
+          write(pipe_fd[1],size,4);
+          write(pipe_fd[1],f->d_name,strlen(f->d_name));
+        }
+      }
     }
+    close(pipe_fd[1]);
     break;
     default :
     close(pipe_fd[1]);
+    char buf[4];
+    memset(buf,0,4);
+    /* on lit une taille dans le pipe, puis un mot de la taille lu et on rappel recursivement dessus */
+    while(read(pipe_fd[0],buf,4) > 0){
+      int size = atoi(buf);
+      char name[size + 1];
+      memset(name,0,size + 1);
+      read(pipe_fd[0],name,size);
+      /* on créer un nouveau argv[0] et argv[1] de la forme argv[0]/nom et argv[1]/nom */
+      char s_1[strlen(argv[0]) + strlen(name) + 2]; char s_2[strlen(argv[1]) + strlen(name) + 2];
+      memset(s_1,0,strlen(argv[0]) + strlen(name) + 2);
+      memset(s_2,0,strlen(argv[1]) + strlen(name) + 2);
+      strcat(s_1,argv[0]); strcat(s_2,argv[1]);
+      if(argv[0][strlen(argv[0]) - 1] != '/') strcat(s_1,"/");
+      if(argv[1][strlen(argv[1]) - 1] != '/') strcat(s_2,"/");
+      strcat(s_1,name); strcat(s_2,name);
+      char *nargv[2] = {s_1,s_2};
+      if(cp_r(nargv) < 0) return -1;
+    }
     break;
   }
-  return 0;
+  return 1;
 }
 
 int isDir(char *path){
   int w;
-  switch(fork()){
+  int r = fork();
+  switch(r){
     case -1 : return -1;
     case 0 : exit(cd(path));
-    default : wait(&w);
+    default : break;
   }
-  return w;
+  waitpid(r,&w,0);
+  return WEXITSTATUS(w);
 }
 
 int cp_dir(char *dirname, char *path){
@@ -93,16 +138,16 @@ int cp_dir(char *dirname, char *path){
   /* dans un tar */
   if(s != NULL && strlen(s) > 0){
     char *tpcc = tarpathconcat(dirname);
+    int size = strlen(tpcc);
     /* dans le cas ou la dernière lettre n'est pas "/" */
-    if(tpcc[strlen(tpcc) -1] != '/'){
-      char tpccslash[strlen(tpcc) + 1];
-      memset(tpccslash,0,strlen(tpcc) + 1);
-      strcat(tpccslash, tpcc);
-      strcat(tpccslash, "/");
-      tpcc = tpccslash;
-    }
-    if(exists(getenv("TARNAME"),tpcc)) return -1;
-    return addTar(getenv("TARNAME"),tpcc,'5',1);
+    if(tpcc[strlen(tpcc) - 1] != '/') size += 2;
+    char p[size];
+    memset(p,0,size);
+    strcat(p,tpcc);
+    if(tpcc[strlen(tpcc) - 1] != '/') strcat(p,"/");
+    strcat(p,"\0");
+    if(exists(getenv("TARNAME"),p)) return -1;
+    return addTar(getenv("TARNAME"),p,'5',1);
   }
   /* pas dans un tar */
   struct stat st = {0};
@@ -112,6 +157,7 @@ int cp_dir(char *dirname, char *path){
 }
 
 int cp_2args(char **argv){
+  printf("arg1 : _%s_ arg2 : _%s_\n",argv[0],argv[1]);
   char *last_arg_1 = (strrchr(argv[0],'/') != NULL)? strrchr(argv[0],'/') : argv[0];
   char *last_arg_2 = (strrchr(argv[1],'/') != NULL)? strrchr(argv[1],'/') : argv[1];
 
