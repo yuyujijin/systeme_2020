@@ -69,7 +69,7 @@ int rmdir_call(int argc,const char** argv)
 	    //if we're in a tar
 	    else
 	      {
-		if(rmdir_tar(argv[i],tar_index)<0)
+		if(rmdir_tar(argv[i],tar_index) < 0)
 		  {
 		    perror("A REFLECHIIIRRR");
 		  }
@@ -103,34 +103,58 @@ int last_is_tar(const char* argv)
 
 int rmdir_tar(const char *argv, int tar_index)
 {
-  
-  /*
   //name is the name of the directory in the tar
   char* name=malloc(strlen(argv)-start+1);
   memset(name,'\0',strlen(argv)-start+1);
   memcpy(name,argv+start,strlen(argv)-start+1);
-
-  //needs to end by '/'
-  if(argv[strlen(argv)-1]!='/')
-    name[strlen(name)]='/';
 
   //path is the path of the tarball
   char *path=malloc(strlen(argv)-start+1);
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
 
   //check if the path exists in the tarball
-  if(file_exists_in_tar(path,name))
+  if(!file_exists_in_tar(path,name))
     {
       errno=17;
-      perror("mkdir");
+      perror("rmdir");
       exit(EXIT_FAILURE);
     }
 
-  if(!addDirTar(path,name)){
-    perror("mkdir");
-    exit(EXIT_FAILURE);
-  }
+  struct posix_header hd;
+  int fd;
 
-  free(name);*/
+  fd = open(path,O_RDONLY);
+  //if tarball path doesn't exist
+  if(fd<0)
+    {
+      close(fd);
+      errno=17;
+      perror("rmdir");
+      exit(EXIT_FAILURE);
+    }
+  
+  while(read(fd, &hd, sizeof(struct posix_header))){
+    if(hd.name[0]=='\0')
+      return 0;
+
+    for (int i = 0; i < strlen (hd.name) ; i ++)
+      {
+	if (hd.name[i] != name[i]) break;
+	else if (i == strlen (hd.name) - 1)
+	  rmtar () blablabla
+	  
+      }
+
+    int filesize;
+    sscanf(hd.size,"%d", &filesize);
+    int s = (filesize + 512 - 1)/512;
+    struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
+    read(fd, temp, s * BLOCKSIZE);
+    free(temp);
+    close (fd);
+  }
+  return 0;
+
+  free(name);
   return 0;
 }
