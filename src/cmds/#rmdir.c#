@@ -69,7 +69,7 @@ int rmdir_call(int argc,const char** argv)
 	    //if we're in a tar
 	    else
 	      {
-		if(rmdir_tar(argv[i],tar_index)<0)
+		if(rmdir_tar(argv[i],tar_index) < 0)
 		  {
 		    perror("A REFLECHIIIRRR");
 		  }
@@ -103,33 +103,24 @@ int last_is_tar(const char* argv)
 
 int rmdir_tar(const char *argv, int tar_index)
 {
-  
-  /*
   //name is the name of the directory in the tar
   char* name=malloc(strlen(argv)-start+1);
   memset(name,'\0',strlen(argv)-start+1);
   memcpy(name,argv+start,strlen(argv)-start+1);
-
-  //needs to end by '/'
-  if(argv[strlen(argv)-1]!='/')
-    name[strlen(name)]='/';
 
   //path is the path of the tarball
   char *path=malloc(strlen(argv)-start+1);
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
 
   //check if the path exists in the tarball
-  if(file_exists_in_tar(path,name))
+  if(!file_exists_in_tar(path,name))
     {
       errno=17;
       perror("mkdir");
       exit(EXIT_FAILURE);
     }
 
-  if(!addDirTar(path,name)){
-    perror("mkdir");
-    exit(EXIT_FAILURE);
-  }
+  
 
   free(name);*/
   return 0;
