@@ -106,6 +106,10 @@ int rmdir_tar(const char *argv, int start)
   memset(name,'\0',strlen(argv)-start+1);
   memcpy(name,argv+start,strlen(argv)-start+1);
 
+  //needs to end by '/'
+  if(argv[strlen(argv)-1]!='/')
+    name[strlen(name)]='/';
+  
   //path is the path of the tarball
   char *path=malloc(strlen(argv)-start+1);
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
