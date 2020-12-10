@@ -1,7 +1,5 @@
 #include "rmdir.h"
 
-int last_is_tar(const char* argv);
-
 int main(int argc, const char** argv)
 {
   return rmdir_call(argc,argv);
@@ -101,7 +99,7 @@ int last_is_tar(const char* argv)
   else return 0;
 }
 
-int rmdir_tar(const char *argv, int tar_index)
+int rmdir_tar(const char *argv, int start)
 {
   //name is the name of the directory in the tar
   char* name=malloc(strlen(argv)-start+1);
@@ -113,9 +111,10 @@ int rmdir_tar(const char *argv, int tar_index)
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
 
   //check if the path exists in the tarball
-  if(!file_exists_in_tar(path,name))
+  printf("%s\n%s\n", path, name);
+  if(! file_exists_in_tar(path,name))
     {
-      errno=17;
+      errno=ENOENT;
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
@@ -137,12 +136,11 @@ int rmdir_tar(const char *argv, int tar_index)
     if(hd.name[0]=='\0')
       return 0;
 
-    for (int i = 0; i < strlen (hd.name) ; i ++)
+    for (unsigned int i = 0; i < strlen (hd.name) ; i ++)
       {
 	if (hd.name[i] != name[i]) break;
 	else if (i == strlen (hd.name) - 1)
-	  rmtar () blablabla
-	  
+	  rmTar(path, name);
       }
 
     int filesize;
