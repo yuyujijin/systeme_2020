@@ -115,7 +115,6 @@ int rmdir_tar(const char *argv, int start)
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
 
   //check if the path exists in the tarball
-  printf("%s\n%s\n", path, name);
   if(! file_exists_in_tar(path,name))
     {
       errno=ENOENT;
@@ -135,16 +134,31 @@ int rmdir_tar(const char *argv, int start)
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
-  
+
+  //count of nb of files path/name/xxx
+  // if > 1 we can't erase dir, it's not empty
+  unsigned int count = 0;
   while(read(fd, &hd, sizeof(struct posix_header))){
     if(hd.name[0]=='\0')
       return 0;
-
-    for (unsigned int i = 0; i < strlen (hd.name) ; i ++)
+    //printf("%s\n",hd.name);
+    if (strlen (hd.name) >= strlen (name))
       {
-	if (hd.name[i] != name[i]) break;
-	else if (i == strlen (hd.name) - 1)
-	  rmTar(path, name);
+	for (unsigned int i = 0; i < strlen (name) ; i ++)
+	  {
+	    if (hd.name[i] != name[i]) break;
+	    else if (i == strlen (name) - 1)
+	      count ++;
+	  }
+	if (count > 1)
+	  {
+	      errno=ENOTEMPTY;
+	      perror ("rmdir");
+	      free(name);
+	      free(path);
+	      close(fd);
+	      exit(EXIT_FAILURE);
+	    }
       }
 
     int filesize;
@@ -153,10 +167,11 @@ int rmdir_tar(const char *argv, int start)
     struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
     read(fd, temp, s * BLOCKSIZE);
     free(temp);
-    close (fd);
   }
-  return 0;
-
+  
+  rmTar(path, name);
+  close (fd);
   free(name);
+  free(path);
   return 0;
 }

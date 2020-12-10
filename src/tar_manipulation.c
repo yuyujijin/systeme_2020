@@ -66,7 +66,7 @@ int addTar(char *path, char *name/*, char typeflag*/){
 }
 
 int rmTar(char *path, char *name){
-  struct posix_header tampon;
+ struct posix_header tampon;
   int fd;
   char err[256];
 
@@ -90,11 +90,9 @@ int rmTar(char *path, char *name){
     };
 
     /* if checksum fails, then its not a proper tar */
-
     /* we get the size of the file for this header */
-    int filesize;
-    sscanf(tampon.size,"%d", &filesize);
-
+    unsigned int filesize;
+    sscanf(tampon.size,"%o", &filesize);
     /* and size of its blocs */
     s = (filesize + 512 - 1)/512;
 
@@ -103,13 +101,11 @@ int rmTar(char *path, char *name){
     /* we read them if order to "ignore them" (we SHOULD use seek here) */
     char temp[s * BLOCKSIZE];
     read(fd, temp, s * BLOCKSIZE);
-    offset += (s + 1) * BLOCKSIZE;
+    offset += (s+1) * BLOCKSIZE;
   }
 
-  offset = (offset > 0)? offset - BLOCKSIZE : 0;
-
+  offset = (offset > 0)? offset: 0;
   /* We're then gonna use a pipe in order to move data */
-
   int rd_offset = offset + (1 + s) * BLOCKSIZE;
 
   close(fd);
@@ -118,7 +114,7 @@ int rmTar(char *path, char *name){
   pipe(fd_pipe);
 
   char rd_buf[BLOCKSIZE];
-  memset(rd_buf,'\0',BLOCKSIZE);
+  // memset(rd_buf,'\0',BLOCKSIZE);
 
   switch(fork()){
     case -1: return -1;
@@ -127,7 +123,6 @@ int rmTar(char *path, char *name){
     fd = open(path, O_RDONLY);
     if(fd < 0) return -1;
     lseek(fd,rd_offset,SEEK_SET);
-
     /* no need to read in the pipe */
     close(fd_pipe[0]);
 
@@ -139,8 +134,7 @@ int rmTar(char *path, char *name){
     close(fd);
 
     /* the son leaves here */
-    exit(0);
-    break;
+    exit(EXIT_SUCCESS);
 
     /* father, reading data in the pipe, writing them in the file */
     default:
@@ -163,10 +157,6 @@ int rmTar(char *path, char *name){
   int tarsize = lseek(fd, 0, SEEK_END);
   if(ftruncate(fd, tarsize - (1 + s) * BLOCKSIZE) < 0) return -1;
   close(fd);
-
-  sprintf(err,"Le fichier %s a été supprimé avec succès de l'archive %s\n",name,path);
-  write(1,err,strlen(err));
-
   return 1;
 
 }
