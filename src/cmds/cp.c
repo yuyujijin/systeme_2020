@@ -84,6 +84,7 @@ int cp_r(char **argv){
       precedé de leur taille */
       while ((f = readdir(dir)) != NULL){
         if(strcmp(f->d_name,".") != 0 && strcmp(f->d_name,"..") != 0){
+          printf("%s\n",f->d_name);
           char size[4];
           memset(size,0,4);
           sprintf(size,"%ld",strlen(f->d_name));
