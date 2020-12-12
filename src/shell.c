@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <ctype.h>
 #include "cmds/cd.h"
 
 #define MAX_SIZE 256
@@ -11,10 +12,15 @@
 #define BOLDBLUE "\x1B[1;34m"
 #define RESET "\x1B[0m"
 
+/* begintrim trims the beginning, endtrim the end, trim both */
+char *begintrim(char * s);
+char *endtrim(char *s);
+char *trim(char *s);
+
 /* str_cut takes a input string of size length, and returns
 a array of string containingthe sub-string of input_str delimited
 by tokens (number of sub-string is given by arc) */
-char** str_cut(char *input_str, char token,size_t length, int* argc);
+char** str_cut(char *input_str, char *tokens, int* argc);
 
 /* execute cmd argv[0] with its args */
 int execute_cmd(char **argv);
@@ -23,6 +29,8 @@ int execute_cmd(char **argv);
 int execute_tar_cmd(char **argv,int argc);
 
 void printcwd();
+
+int execute_pipe_cmd(char ***pipelines_args, int argc, int *pipelines_length);
 
 /*
   modify argv[i] if we are inside a tar. if we did cd a.tar/b and then ls c
@@ -50,40 +58,94 @@ int main(){
     line = read_line();
     if(line == NULL) break;
 
-    /* cut it in words array with space char delimiter */
-    int argc;
-    char **args = str_cut(line,' ', strlen(line), &argc);
-    if(args == NULL) return -1;
-
-    free(line);
-
-    if(strcmp(args[0],"exit") == 0) exit(0);
-
-    /* specific case for cd, because we do not execute it */
-    if(strcmp(args[0],"cd") == 0){
-      if(args[1] == NULL) continue;
-      if(cd(args[1]) < 0) perror("cd");
+    if(strcmp(line,"\n") == 0){
+      free(line);
       continue;
     }
 
-    /* in case we're in a tarball */
-    if(strstr(getenv("TARPATH"),".tar") != NULL
-       || one_of_args_is_tar(args + 1, argc -1)){
-      if(execute_tar_cmd(args,argc) < 0)
-	printf("Commande %s non reconnue\n",args[0]);
-    }else{
-      if(execute_cmd(args) < 0)
-	printf("Commande %s non reconnue\n",args[0]);
+    /* first, we cut our line using '|' as a delimiter */
+    int argc;
+    char **pipelines = str_cut(line,"|",&argc);
+
+    free(line);
+    /* argc-- is because our arrays of words all finish with (null) and we dont
+    need it for this array */
+    argc--;
+    /* we create an array for every sub sequences between the '|' delimiter */
+    char **pipelines_args[argc];
+    int pipelines_length[argc];
+    /* and then we recut each sub sequences with the ' ' delimiter */
+    for(int i = 0; i < argc; i++){
+      if(pipelines[i] != NULL){
+        pipelines_args[i] = str_cut(pipelines[i]," ",&pipelines_length[i]);
+      }else{
+        pipelines_args[i] = NULL;
+      }
     }
 
-    for(int i = 0; i < argc; i++){
-      free(args[i]);
+    //TODO : free les string dans pipelines (ne marche pas asctuellement)
+    free(pipelines);
+
+    /* on entre exit en toute première commande */
+    if(strcmp(pipelines_args[0][0],"exit") == 0) break;
+
+    /* specific case for cd, because we do not execute it */
+    if(strcmp(pipelines_args[0][0],"cd") == 0){
+      if(pipelines_args[0][1] == NULL) continue;
+      if(cd(pipelines_args[0][1]) < 0) perror("cd");
+      continue;
     }
-    free(args);
+
+    for(int i = 0 ; i < argc ; i++){
+      printf("Commande n°%d : \t",i+1);
+      for(int j = 0; j < pipelines_length[i] - 1; j++){
+        printf("_%s_ ",pipelines_args[i][j]);
+      }
+      printf("\n");
+    }
+
+    execute_pipe_cmd(pipelines_args,argc,pipelines_length);
+  }
+   write(STDIN_FILENO,"\n",2);
+   return 0;
+}
+
+int execute_pipe_cmd(char ***pipelines_args, int argc, int *pipelines_length){
+  printf("lançons l'execution ! \n");
+  int nbr = argc;
+
+  int pipefds[nbr][2];
+
+  for(int i = 0; i < nbr; i++) pipe(pipefds[i]);
+
+  int w;
+  for(int i = 0; i < nbr; i++){
+    switch(fork()){
+      case -1 : return -1;
+      case 0 :
+      if(i == 0) close(pipefds[0][0]);
+      if(i == nbr - 1) close(pipefds[nbr - 1][1]);
+
+      for(int j = 0; j < nbr; j++){
+        if(j != i){
+          close(pipefds[j][1]);
+        }
+        if(j != i - 1){
+          close(pipefds[j][0]);
+        }
+      }
+
+      if(i < nbr - 1) dup2(pipefds[i][1],STDOUT_FILENO);
+      if(i > 0) dup2(pipefds[i-1][0],STDIN_FILENO);
+
+      execute_cmd(pipelines_args[i]);
+      return 0;
+      default : if(i == 0) wait(&w); break;
+    }
   }
 
-  write(STDIN_FILENO,"\n",2);
-  return 0;
+  for(int i = 0; i < nbr; i++){ close(pipefds[i][0]); close(pipefds[i][1]); }
+  return 1;
 }
 
 void printcwd(){
@@ -111,39 +173,21 @@ char *read_line(){
   return s;
 }
 
-char** str_cut(char *input_str, char token, size_t length, int* argc){
+char** str_cut(char *input_str, char *tokens, int* argc){
+  //printf("je coupe : _%s_ avec le token : _%s_\n",input_str,tokens);
   *argc = 0;
-  int l = 0;
   char **words = malloc(sizeof(char*));
   if(words == NULL) return NULL;
 
   /* we go through the whole sentence */
-  unsigned i = 0;
-  while(i < length){
-    /* if found the token, or a backspace delimiter */
-    if(input_str[i] == token || input_str[i] == '\n'){
-      /* allocate space for 1 more word, take it and store it in the array */
-      words = realloc(words, (*argc + 1) * sizeof(char*));
-      char *w = malloc(sizeof(char) * l + 2);
-      if(w == NULL) return NULL;
-
-      memset(w,'\0', sizeof(char) * l + 2);
-
-      strncat(w, input_str + i - l, l);
-      strcat(w, "\0");
-
-      words[*argc] = w;
-
-      /* i++ one more time for the token we've just red */
-      (*argc)++; i++;
-      l = 0;
-    }
-    l++;i++;
+  char *word = strtok(strdup(input_str),tokens);
+  while(word != NULL){
+    words[(*argc)++] = trim(word);
+    words = realloc(words,((*argc) + 1) * sizeof(char*));
+    words[(*argc)] = NULL;
+    word = strtok(NULL,tokens);
   }
-
-  words = realloc(words, (*argc + 1) * sizeof(char*));
-  words[*argc] = NULL;
-
+  (*argc)++;
   return words;
 }
 
@@ -172,21 +216,8 @@ int add_tar_path_to_args(char **argv,int argc){
 
 
 int execute_cmd(char **argv){
-  int found, w;
-
-  int r = fork();
-  /* exit option */
-  switch(r){
-    case -1 : return -1;
-    case 0 :
-    found = execvp(argv[0], argv);
-    if(found < 0) return -1;
-    return 1;
-    default :
-    wait(&w); break;
-  }
-
-  return 1;
+  execvp(argv[0], argv);
+  exit(0);
 }
 
 int execute_tar_cmd(char **argv,int argc){
@@ -221,4 +252,25 @@ int one_of_args_is_tar(char **argv, int argc){
     if(strstr(argv[i],".tar/") != NULL) return 1;
   }
   return 0;
+}
+
+
+
+char *begintrim(char *s)
+{
+    while(isspace(*s)) s++;
+    return s;
+}
+
+char *endtrim(char *s)
+{
+    char* back = s + strlen(s);
+    while(isspace(*--back));
+    *(back+1) = '\0';
+    return s;
+}
+
+char *trim(char *s)
+{
+    return endtrim(begintrim(s));
 }
