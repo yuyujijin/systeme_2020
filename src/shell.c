@@ -96,14 +96,6 @@ int main(){
       continue;
     }
 
-    for(int i = 0 ; i < argc ; i++){
-      printf("Commande n°%d : \t",i+1);
-      for(int j = 0; j < pipelines_length[i] - 1; j++){
-        printf("_%s_ ",pipelines_args[i][j]);
-      }
-      printf("\n");
-    }
-
     execute_pipe_cmd(pipelines_args,argc,pipelines_length);
   }
    write(STDIN_FILENO,"\n",2);
@@ -111,7 +103,6 @@ int main(){
 }
 
 int execute_pipe_cmd(char ***pipelines_args, int argc, int *pipelines_length){
-  printf("lançons l'execution ! \n");
   int nbr = argc;
 
   int pipefds[nbr][2];
@@ -120,7 +111,8 @@ int execute_pipe_cmd(char ***pipelines_args, int argc, int *pipelines_length){
 
   int w;
   for(int i = 0; i < nbr; i++){
-    switch(fork()){
+    int r = fork();
+    switch(r){
       case -1 : return -1;
       case 0 :
       if(i == 0) close(pipefds[0][0]);
@@ -138,9 +130,9 @@ int execute_pipe_cmd(char ***pipelines_args, int argc, int *pipelines_length){
       if(i < nbr - 1) dup2(pipefds[i][1],STDOUT_FILENO);
       if(i > 0) dup2(pipefds[i-1][0],STDIN_FILENO);
 
-      execute_cmd(pipelines_args[i]);
+      execvp(pipelines_args[i][0],pipelines_args[i]);
       return 0;
-      default : if(i == 0) wait(&w); break;
+      default : close(pipefds[i][1]); close(pipefds[i-1][0]); waitpid(r,&w,0); break;
     }
   }
 
