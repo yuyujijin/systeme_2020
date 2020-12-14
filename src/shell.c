@@ -30,7 +30,7 @@ int execute_tar_cmd(char **argv,int argc);
 
 void printcwd();
 
-int execute_pipe_cmd(char ***pipelines_args, int argc, int *pipelines_length);
+int execute_pipe_cmd(char ***pipelines_args, int argc);
 
 /*
   modify argv[i] if we are inside a tar. if we did cd a.tar/b and then ls c
@@ -73,17 +73,17 @@ int main(){
     argc--;
     /* we create an array for every sub sequences between the '|' delimiter */
     char **pipelines_args[argc];
-    int pipelines_length[argc];
     /* and then we recut each sub sequences with the ' ' delimiter */
     for(int i = 0; i < argc; i++){
       if(pipelines[i] != NULL){
-        pipelines_args[i] = str_cut(pipelines[i]," ",&pipelines_length[i]);
+        int taille = 0;
+        pipelines_args[i] = str_cut(pipelines[i]," ",&taille);
       }else{
         pipelines_args[i] = NULL;
       }
     }
 
-    //TODO : free les string dans pipelines (ne marche pas asctuellement)
+    /* on ne free que le tableau : les cases proviennent de strtok */
     free(pipelines);
 
     /* on entre exit en toute première commande */
@@ -96,13 +96,17 @@ int main(){
       continue;
     }
 
-    execute_pipe_cmd(pipelines_args,argc,pipelines_length);
+    execute_pipe_cmd(pipelines_args,argc);
+
+    /* on libère les pipelines_args */
+    for(int i = 0; i < argc; i++) free(pipelines_args[i]);
   }
-   write(STDIN_FILENO,"\n",2);
+  char *s = "\nCe fût un plaisir.\n";
+   write(STDIN_FILENO,s,strlen(s));
    return 0;
 }
 
-int execute_pipe_cmd(char ***pipelines_args, int argc, int *pipelines_length){
+int execute_pipe_cmd(char ***pipelines_args, int argc){
   int nbr = argc;
 
   int pipefds[nbr][2];
@@ -127,11 +131,20 @@ int execute_pipe_cmd(char ***pipelines_args, int argc, int *pipelines_length){
         }
       }
 
+      int oldstdin = dup(STDIN_FILENO);
+
       if(i < nbr - 1) dup2(pipefds[i][1],STDOUT_FILENO);
       if(i > 0) dup2(pipefds[i-1][0],STDIN_FILENO);
 
       execvp(pipelines_args[i][0],pipelines_args[i]);
-      return 0;
+
+      char s[MAX_SIZE];
+      memset(s,0,MAX_SIZE);
+      sprintf(s,"%s : commande introuvable\n",pipelines_args[i][0]);
+
+      dup2(oldstdin,STDIN_FILENO);
+      write(STDIN_FILENO,s,strlen(s));
+      exit(-1);
       default : close(pipefds[i][1]); close(pipefds[i-1][0]); waitpid(r,&w,0); break;
     }
   }
@@ -156,7 +169,7 @@ void printcwd(){
 char *read_line(){
   char buf[MAX_SIZE];
   memset(buf,'\0',MAX_SIZE);
-  read(STDIN_FILENO, buf, MAX_SIZE);
+  if(read(STDIN_FILENO, buf, MAX_SIZE) <= 0) return NULL;
 
   char *s = malloc(sizeof(char) * (strlen(buf)));
   memset(s,'\0',strlen(buf));
