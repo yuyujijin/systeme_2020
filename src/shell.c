@@ -23,32 +23,15 @@ char** str_cut(char *input_str, char token,size_t length, int* argc);
 int execute_cmd(int argc, char**argv);
 
 /* same w/ tar */
-int execute_tar_cmd(int argc, char **argv);
+int execute_tar_cmd(char **argv);
 
 void printcwd();
-
-/*
-  modify argv[i] if we are inside a tar. if we did cd a.tar/b and then ls c
-  --> tar_path=a.tar/b && the commands that will be executed will be ls a.tar/b/c
-  since we added the TARPATH in the arguments
-*/
-int add_tar_path_to_args(char **argv,int argc);
 
 /* read_line read the next line from stdin */
 char* read_line();
 
 /* this function check if one of the args is looking INSIDE a tar */
 int one_of_args_is_tar(int argc,char **argv);
-
-/* let's say we have "cat a > b > c" then we fill int *out with
-  out[0] --> index of first occurence of '>'
-  out[1] -->  index of first argument after '>'
-  in our case we would have out={2,5}
-  We return -1 if any error occured
-  We also create a blank file(O_CREAT|O_TRUNC) each we pass an arguments after the first '>'
-  to duplicate this execution
-  tar=0 then we're not dealing with any tar, tar=1 then we're dealing with tar and should not create any file during the loop
-*/
 
 int execute_redirection(int argc, char **argv);
 
@@ -234,7 +217,7 @@ int execute_redirection(int argc, char **argv){
 }
 
 int execute_cmd(int argc, char**argv){
-  if(strlen(getenv("TARNAME")) > 0 || one_of_args_is_tar(argc, argv)) return execute_tar_cmd(argc, argv);
+  if(strlen(getenv("TARNAME")) > 0 || one_of_args_is_tar(argc, argv)) return execute_tar_cmd(argv);
   execvp(argv[0], argv);
 
   char err[MAX_SIZE];
@@ -245,7 +228,7 @@ int execute_cmd(int argc, char**argv){
   exit(-1);
 }
 
-int execute_tar_cmd(int argc, char**argv){
+int execute_tar_cmd(char**argv){
   /* on récupère le path ou sont stockés les fonctions sur les tars */
   char *pathname = getenv("TARCMDSPATH");
   /* on y concatene la commande voulue */

@@ -7,7 +7,11 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include "cmds/cd.h"
 
 char* path_simplifier(char* path);
+char* pathminus(char *path, char *lastarg);
+char *getLastArg(char *path);
+int cdTo(char *path, char* last_arg);
 
 #endif

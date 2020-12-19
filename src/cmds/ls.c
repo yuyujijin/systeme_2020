@@ -1,64 +1,43 @@
 #include "ls.h"
 
 char *month[]={"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"};
-int ls(char *const args[],int argc){
-  int fork_ls=fork();
-  switch (fork_ls) {
-    case -1/* value */:perror("fork");exit(EXIT_FAILURE);
+
+int ls(int argc, char **argv){
+  if(argc == 1) return ls_tar(getenv("TARNAME"),0);
+  int L = optionL(argc,argv);
+
+  switch (fork()) {
+    case -1 : perror("fork");exit(EXIT_FAILURE);
     case 0 :
-      {
-        int option=has_option(args,argc);
-        int* tarIndex=malloc(sizeof(int)*argc);
-        has_Tar(args,argc,tarIndex);
-        if(argc==1){
-          if(execlp("ls","ls",NULL)<0){
-            perror("ls");
-          }
-        }
-        for(int i=1;i<argc;i++){//since args={"ls",args[0]....args[argc]} so we start with i=1
-          if(((argc>2&&option<0)||argc>3)&&option!=i){
-            if(write(1,args[i],strlen(args[i]))<0)return -1;
-            if(write(1,":\n ",2)<0)return -1;
-          }
-          //if we're working with a regular path
-          if(tarIndex[i]==0){
-            switch(fork()){
-              case -1:perror("fork_loop");exit(EXIT_FAILURE);
-              case 0 :
-                if(option==-1&&execlp("ls","ls",args[i],NULL)<0){
-                  perror(args[i]);
-                }else if(i!=option&&execlp("ls","ls","-l",args[i],NULL)<0){
-                  perror(args[i]);
-                }
-                if(i!=option&&write(1,"\n",1)<0)return -1;
-                exit(EXIT_SUCCESS);
-                break;
-              default :wait(NULL);break;
-            }
-          }
-          //if we're working with tar
-          else if(tarIndex[i]==1){
-            if(ls_tar(args[i],option)<0){
-              write(1,"ls: Impossible d'accéder à '",29);
-              write(1,args[i],strlen(args[i]));
-              write(1,"': Aucun fichier ou dossier de ce type\n",39);
-            }
-            if(write(1,"\n",1)<0)return -1;
-          }
-        }
-        exit(EXIT_SUCCESS);
-        break;
+    for(int i = 1; i < argc; i++){
+      if(!strcmp(argv[i],"-l")) continue;
+      if(argc > 2){
+        char name[256];
+        memset(name,0,256);
+        sprintf(name,"%s:\n",argv[i]);
+        write(STDOUT_FILENO,name,strlen(name));
       }
+      switch (fork()) {
+        case -1 : perror("fork");exit(EXIT_FAILURE);
+        case 0 :
+        if(cd(argv[i]) < 0) exit(-1);
+        if(ls_tar(getenv("TARNAME"),L) < 0) exit(-1);
+        exit(1);
+        default : wait(NULL); break;
+      }
+      if(i < argc - 1) write(STDOUT_FILENO,"\n",1);
+    }
+    exit(0);
     default : wait(NULL);break;
   }
   return 0;
 }
 
-int has_option(char *const args[],int argc){//if option<-1 then "ls" else "ls -l"
+int optionL(int argc, char **argv){//if option<-1 then "ls" else "ls -l"
   for(int i=0;i<argc;i++){
-    if(strcmp(args[i],"-l")==0)return i;
+    if(!strcmp(argv[i],"-l")) return 1;
   }
-  return -1;
+  return 0;
 }
 
 int ls_tar(const char *args,int option){
@@ -138,6 +117,6 @@ void convert_stmode(struct posix_header* posix_header,char mode[]){//0000644 -> 
   }
   mode[10]='\0';
 }
-int main(int argc,char *const argv[]){
-  return ls(argv,argc);
+int main(int argc,char **argv){
+  return ls(argc,argv);
 }

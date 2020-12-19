@@ -48,3 +48,23 @@ char* path_simplifier(char* path){
 
   return s;
 }
+
+char* pathminus(char *path, char *lastarg){
+  char *s = malloc((strlen(path) - strlen(lastarg) + 1) * sizeof(char));
+  memset(s,'\0',strlen(path) - strlen(lastarg) + 1);
+  strncat(s,path,strlen(path) - strlen(lastarg));
+  strcat(s,"\0");
+  return s;
+}
+
+char *getLastArg(char *path){
+  return (strrchr(path,'/') != NULL)? strrchr(path,'/') : path;
+}
+
+
+int cdTo(char *path, char* last_arg){
+  char* s = pathminus(path,last_arg);
+  if(cd(s) < 0){ return -1; }
+  free(s);
+  return 0;
+}
