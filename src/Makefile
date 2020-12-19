@@ -5,7 +5,7 @@ LDFLAGS= -lm -g
 ALL=shell cmds/pwd_tar cmds/ls_tar cmds/cat_tar cmds/mkdir_tar
 all: $(ALL)
 
-shell: tar.c tar_manipulation.c cmds/cd.c shell.c
+shell: tar.c tar_manipulation.c cmds/cd.c shell.c useful.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 cmds/pwd_tar: cmds/pwd.o

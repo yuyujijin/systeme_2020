@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include "cmds/cd.h"
 #include "tar_manipulation.h"
+#include "useful.h"
 
 #define MAX_SIZE 256
 #define BOLDGREEN "\x1B[1;32m"
@@ -19,10 +20,10 @@ by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char token,size_t length, int* argc);
 
 /* execute cmd argv[0] with its args */
-int execute_cmd(char **argv,int argc);
+int execute_cmd(int argc, char**argv);
 
 /* same w/ tar */
-int execute_tar_cmd(char **argv,int argc);
+int execute_tar_cmd(int argc, char **argv);
 
 void printcwd();
 
@@ -37,7 +38,7 @@ int add_tar_path_to_args(char **argv,int argc);
 char* read_line();
 
 /* this function check if one of the args is looking INSIDE a tar */
-int one_of_args_is_tar(char **argv, int argc);
+int one_of_args_is_tar(int argc,char **argv);
 
 /* let's say we have "cat a > b > c" then we fill int *out with
   out[0] --> index of first occurence of '>'
@@ -57,6 +58,12 @@ int main(){
   /* environnement variable that store the additional path */
   setenv("TARPATH","",1);
   setenv("TARNAME","",1);
+
+  char tarcmdspath[strlen(getcwd(NULL,0)) + strlen("/cmds")];
+  memset(tarcmdspath,0,strlen(getcwd(NULL,0)) + strlen("/cmds"));
+  sprintf(tarcmdspath,"%s/cmds",getcwd(NULL,0));
+
+  setenv("TARCMDSPATH",tarcmdspath,1);
 
   while(1){
     printcwd();
@@ -214,42 +221,53 @@ int execute_redirection(int argc, char **argv){
     }
 
     /* sinon, on ajoute l'argument au tableau des executions */
-    argv_no_redirection[j++] = argv[i];
+    if(j > 0){
+       argv_no_redirection[j++] = path_simplifier(argv[i]);
+     }else{
+       argv_no_redirection[j++] = argv[i];
+     }
   }
 
   /* dernier argument a null (pour exec) */
   argv_no_redirection[j] = NULL;
-  execvp(argv_no_redirection[0], argv_no_redirection);
-  perror("erreur dans l'execution de la commande");
-  exit(0);
+  return execute_cmd(j, argv_no_redirection);
 }
 
-int add_tar_path_to_args(char **argv,int argc){
-  char *tar_path=getenv("TARPATH");
-  if(argc==1){//if we just say "ls" we gotta show what's inside the tarpath and not pdw
-    argc+=1;
-    char *cmd=argv[0];
-    if(argv==NULL)return -1;
-    argv[0]=cmd;
-    argv[1]=tar_path;
-    return 0;
-  }
-  for(int i=1;i<argc;i++){
-    if(argv[i][0]!='-'){//we don't take option only path
-      char *tar_arg=malloc(strlen(argv[i])+strlen(tar_path)+2);
-      if(tar_arg==NULL)return -1;
-      strcpy(tar_arg,tar_path);
-      if(argv[i][0]!='/')strcat(tar_arg,"/");
-      strcat(tar_arg,argv[i]);
-      argv[i]=tar_arg;
-    }
-  }
-  return 0;
+int execute_cmd(int argc, char**argv){
+  if(strlen(getenv("TARNAME")) > 0 || one_of_args_is_tar(argc, argv)) return execute_tar_cmd(argc, argv);
+  execvp(argv[0], argv);
+
+  char err[MAX_SIZE];
+  memset(err,0,MAX_SIZE);
+  sprintf(err,"Commande %s inconnue\n",argv[0]);
+  write(STDERR_FILENO,err,strlen(err));
+
+  exit(-1);
 }
 
-int one_of_args_is_tar(char **argv, int argc){
-  for(int i = 0; i < argc; i++){
-    if(strstr(argv[i],".tar/") != NULL) return 1;
+int execute_tar_cmd(int argc, char**argv){
+  /* on récupère le path ou sont stockés les fonctions sur les tars */
+  char *pathname = getenv("TARCMDSPATH");
+  /* on y concatene la commande voulue */
+  char pathpluscmd[strlen(pathname) + 1 + strlen(argv[0])];
+  memset(pathpluscmd,0,strlen(pathname) + 1 + strlen(argv[0]));
+  sprintf(pathpluscmd,"%s/%s",pathname,argv[0]);
+
+  /* et on exec */
+  execv(pathpluscmd,argv);
+
+  /* cas d'une erreur */
+  char err[MAX_SIZE];
+  memset(err,0,MAX_SIZE);
+  sprintf(err,"Commande %s inconnue\n",argv[0]);
+  write(STDERR_FILENO,err,strlen(err));
+
+  exit(-1);
+}
+
+int one_of_args_is_tar(int argc, char**argv){
+  for(int i = 1; i < argc; i++){
+    if(strstr(argv[i],".tar") != NULL) return 1;
   }
   return 0;
 }

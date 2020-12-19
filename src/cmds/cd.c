@@ -6,7 +6,7 @@ int cd(char *path){
   char *tar_name = getenv("TARNAME");
   char *tar_path = getenv("TARPATH");
   char *fp = get_full_path(get_full_path(pathcpy,tar_path),tar_name);
-  special_path sp = path_simplifier(fp);
+  special_path sp = special_path_maker(fp);
   free(fp);
   /*
   now we have just to check if :
@@ -40,7 +40,7 @@ char* get_full_path(char *path, char *tar_path){
   return full_path;
 }
 
-struct special_path path_simplifier(char* path){
+struct special_path special_path_maker(char* path){
   /* words will act as a lifo structure */
   char *words[64];
   int size = 0, pathsize = 0;
