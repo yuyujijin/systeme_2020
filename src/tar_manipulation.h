@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
@@ -18,7 +19,7 @@ int isTar(char*);
 /* returns the offset of the first empty block */
 size_t offsetTar(char *path);
 
-/* reads from stdin and adds it to a tar */
+/* adds a file in the tar with name as its name */
 int addTar(char *path, char name[100]/*,  char typeflag*/);
 
 /* removes file with corresponding name */
@@ -36,6 +37,7 @@ void has_Tar(char *const args[],int argc,int *tarIndex);// If args[0] has a tar 
 
 /*
   Let's say our path is "a/b/c.tar/d/e"this methods returns "a/b/c.tar"
+  useful for opening the file
 */
 char* get_tar_from_full_path(const char * path);
 
@@ -60,6 +62,22 @@ int is_source(const char* path);
 */
 char * data_from_tarFile(const char *path);
 
+/*
+  return 1 if the file exists in the tar
+*/
 int exists(char* tarname, char* filename);
 
+/*
+  This modify the data of a file inside a tar, we mostly use it for redirection.
+  if type_of_redirection==0 then we
+    first we delete the data in the tar using rmTar then with the same way as addTar does
+  if type_of_redirection==1 then we
+    we delete the file with rm_tar but keep the posix_header aswell as the old data
+  we write data to the end of the file with the same posix_header as before
+*/
+int write_in_tar(char *path,int fd_tar,char *data,int type_of_redirection);
+/*
+  create a tar file
+*/
+int create_tar(char *path);
 #endif
