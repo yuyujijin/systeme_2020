@@ -62,14 +62,8 @@ int main(){
 
   /* environnement variable that store the additional path */
   setenv("TARPATH","",1);
-  char *pwd=malloc(strlen(getcwd(NULL,0))+strlen(getenv("PATH"))+2+5);
-  strcpy(pwd,getenv("PATH"));
-  strcat(pwd,":");
-  strcat(pwd,getcwd(NULL,0));
-  strcat(pwd,"/cmds");
-  strcat(pwd,"\0");
-  setenv("PATH",pwd,1);
-  free(pwd);
+  setenv("TARNAME","",1);
+
   while(1){
     printcwd();
 
@@ -116,10 +110,8 @@ int main(){
 void printcwd(){
   char bgnline[MAX_SIZE];
   char *cwd = getcwd(NULL, 0);
-  cwd = realloc(cwd,strlen(cwd) + strlen(getenv("TARPATH")) + 2);
-  strcat(cwd,"/");
-  strcat(cwd,getenv("TARPATH"));
-  sprintf(bgnline,"%s%s%s:%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,RESET);
+  char *separator = (strlen(getenv("TARNAME")) > 0)? "/" : "";
+  sprintf(bgnline,"%s%s%s:%s%s%s%s%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,separator,getenv("TARNAME"),separator,getenv("TARPATH"),RESET);
 
   write(STDIN_FILENO, bgnline, strlen(bgnline));
 

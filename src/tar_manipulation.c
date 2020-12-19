@@ -346,6 +346,9 @@ int exists(char *tarpath, char *filename){
   fd = open(tarpath,O_RDONLY);
   if(fd < 0) return 0;
 
+  /* if we just check tarpath */
+  if(strlen(filename) == 0) return 1;
+
   while(1){
     /* create the buffer to read the header */
     read(fd, &tampon, sizeof(struct posix_header));
