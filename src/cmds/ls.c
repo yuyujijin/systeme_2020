@@ -3,7 +3,7 @@
 char *month[]={"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"};
 
 int ls(int argc, char **argv){
-  if(argc == 1) return ls_tar(getenv("TARNAME"),0);
+  if(argc == 1) return ls_tar(0);
   int L = optionL(argc,argv);
 
   switch (fork()) {
@@ -17,11 +17,36 @@ int ls(int argc, char **argv){
         sprintf(name,"%s:\n",argv[i]);
         write(STDOUT_FILENO,name,strlen(name));
       }
+      char *last_arg;
       switch (fork()) {
         case -1 : perror("fork");exit(EXIT_FAILURE);
         case 0 :
-        if(cd(argv[i]) < 0) exit(-1);
-        if(ls_tar(getenv("TARNAME"),L) < 0) exit(-1);
+        // on tente d'acceder au chemin, sans le dernier argument
+        // si il est non accessible -> erreur
+        // ensuite, on verifie si le dernier arg existe dans le contexte actuel
+        // sinon, erreur ->
+        // puis on essaie d'y acceder, si ça fonctionne, c'est un dossier
+        // sinon c'est un dossier
+        last_arg = getLastArg(argv[i]);
+        // si le dernier argument != argv[i] (juste un fichier simple)
+        if(strcmp(argv[i],last_arg)) if(cd(pathminus(argv[i],last_arg)) < 0) exit(EXIT_FAILURE);
+        // on vérifie si le fichier existe (dans les 2 contextes)
+        if(strlen(getenv("TARNAME"))){
+          if(!existsTP(last_arg)) exit(EXIT_FAILURE);
+        }else{
+          int fd = open(last_arg,O_RDONLY);
+          if(fd < 0) exit(EXIT_FAILURE);
+          close(fd);
+        }
+        // si on peut y acceder
+        if(cd(last_arg)){
+          if(strlen(getenv("TARNAME"))) return ls_tar(L);
+          if(L) execlp("ls","ls","-l",NULL);
+          execlp("ls","ls",NULL);
+        }
+        // sinon on print le nom (non dossier)
+        write(STDOUT_FILENO,last_arg,strlen(last_arg));
+        write(STDOUT_FILENO,"\n",1);
         exit(1);
         default : wait(NULL); break;
       }
@@ -40,10 +65,11 @@ int optionL(int argc, char **argv){//if option<-1 then "ls" else "ls -l"
   return 0;
 }
 
-int ls_tar(const char *args,int option){
-  struct posix_header** posix_header=posix_header_from_tarFile(args);
-  if(posix_header==NULL)return -1;
-  if(option==-1){
+int ls_tar(int option){
+  struct posix_header** posix_header = posix_header_from_tarFile(getenv("TARNAME"),getenv("TARPATH"));
+  if(posix_header == NULL) return -1;
+  // normal case
+  if(option != 1){
     for(int i=0;posix_header[i]!=NULL;i++){
       if(write(1,posix_header[i]->name,strlen(posix_header[i]->name))<0)return -1;
       if(write(1," ",1)<0)return -1;
@@ -52,7 +78,9 @@ int ls_tar(const char *args,int option){
   }
   // now we are in the case of "ls -l"
   int max_size=maxNbDigit(posix_header);
+
   for(int i=0;posix_header[i]!=NULL;i++){
+
     unsigned long int int_time=strtol(posix_header[i]->mtime,NULL,8);
     const time_t time = (time_t)int_time;
     struct tm *date=gmtime(&time);
@@ -71,10 +99,11 @@ int ls_tar(const char *args,int option){
     int_filesize,month[date->tm_mon],date->tm_mday,date->tm_hour,date->tm_min,posix_header[i]->name)<0)return-1;
     if(write(1,line,sizeof(line))<0)return -1;
     if(write(1,"\n",1)<0)return -1;
+
   }
   return 0;
-
 }
+
 int nbDigit (int n) {//return the number of digit of a certain integer. We need it for info.st_size
     if (n == 0) return 1;
     return floor (log10 (abs (n))) + 1;

@@ -26,7 +26,7 @@ int cd(char *path){
   setenv("TARNAME",sp.tar_name,1);
   setenv("TARPATH",sp.tar_path,1);
 
-  return 0;
+  return 1;
 }
 
 char* get_full_path(char *path, char *tar_path){

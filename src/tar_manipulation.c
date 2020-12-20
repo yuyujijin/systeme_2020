@@ -361,18 +361,18 @@ char * data_from_tarFile(const char *path){
   }
   return NULL;
 }
-struct posix_header** posix_header_from_tarFile(const char *path){
+struct posix_header** posix_header_from_tarFile(char *tarname, char *path){
+  printf("%s %s\n",tarname,path);
   int directory=0;
   char *directory_name;//won't be used if directory==0
-  int source=is_source(path);
+  int source = strlen(path) == 0;
   char altpath[strlen(path)+2];//we do this cause we want path to be a.tar/b/c/ and not a.tar/b/c for the case of folder
   strcpy(altpath,path);
   strcat(altpath,"/");
-  char *tar_path=get_tar_from_full_path(path);
   /*If directory==1 then we are returning all the file inside path(a directory) which is inside the tar */
   /*If source==1 then we are only returning the posix_header of all file inside a.tar (not the file in subdirectories)*/
   /*If both are zero then we are returning all the file inside "a.tar/." */
-  int fd=open(tar_path,O_RDONLY);
+  int fd=open(tarname,O_RDONLY);
   if(fd<0)return NULL;
   int index=0;
   /* if the file doesnt exist (or cant be opened), then its not a tar */
@@ -436,6 +436,16 @@ struct posix_header** posix_header_from_tarFile(const char *path){
   }
   close(fd);
   return result;
+}
+
+int existsTP(char *filename){
+  if(strlen(getenv("TARNAME"))) return -1;
+  char s[strlen(filename) + strlen(getenv("TARPATH")) + 1];
+  memset(s,0,strlen(filename) + strlen(getenv("TARPATH")) + 1);
+  strcat(s,getenv("TARPATH"));
+  if(strlen(s)) strcat(s,"/");
+  strcat(s,filename);
+  return exists(getenv("TARNAME"),s);
 }
 
 int exists(char *tarpath, char *filename){

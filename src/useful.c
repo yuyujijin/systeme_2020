@@ -60,11 +60,3 @@ char* pathminus(char *path, char *lastarg){
 char *getLastArg(char *path){
   return (strrchr(path,'/') != NULL)? strrchr(path,'/') : path;
 }
-
-
-int cdTo(char *path, char* last_arg){
-  char* s = pathminus(path,last_arg);
-  if(cd(s) < 0){ return -1; }
-  free(s);
-  return 0;
-}

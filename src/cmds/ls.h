@@ -18,7 +18,7 @@
 #include "../useful.h"
 int ls(int argc, char**argv);//we call this function in shell
 int optionL(int argc, char**argv);//return -1 if no option, if option is -l then return index of the option in args[]
-int ls_tar(const char *args,int option);//ls for all tar file
+int ls_tar(int option);//ls for all tar file
 int maxNbDigit(struct posix_header** posix_header);//return the max nb of digit of all file size
 void convert_stmode(struct posix_header* posix_header,char mode[]);//convert the mode found in posix_header into a readable mode
 #endif
