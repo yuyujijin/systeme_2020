@@ -11,7 +11,7 @@ int addTar(const char *path, const char *name, char typeflag){
   if(!isTar(path)) return -1;
 
   /* we get the offset right before the empty blocks */
-  size_t offt = offsetTar(path) - BLOCKSIZE;
+  size_t offt = offsetTar(path);
   /* and we go there */
   lseek(fd,offt + BLOCKSIZE,SEEK_CUR);
 
@@ -70,7 +70,8 @@ int addTar(const char *path, const char *name, char typeflag){
 
 struct posix_header* getHeader(const char *path, const char *name){
   struct posix_header *tampon = malloc(sizeof(struct posix_header));
-  int fd, filesize, s;
+  int fd, s;
+  unsigned int filesize;
 
 
   /* if the file doesnt exist (or cant be opened), then its not a tar */
@@ -85,7 +86,7 @@ struct posix_header* getHeader(const char *path, const char *name){
     if(isEmpty(tampon)) return NULL;
 
     /* we get the size of the file for this header */
-    sscanf(tampon->size,"%d", &filesize);
+    sscanf(tampon->size,"%o", &filesize);
 
     /* and size of its blocs */
     s = (filesize + 512 - 1)/512;
@@ -104,7 +105,8 @@ struct posix_header* getHeader(const char *path, const char *name){
 
 int rdTar(const char *path, const char *name){
   struct posix_header tampon;
-  int fd, filesize, s;
+  int fd, s;
+  unsigned int filesize;
 
   /* if the file doesnt exist (or cant be opened), then its not a tar */
   fd = open(path,O_RDONLY);
@@ -118,7 +120,7 @@ int rdTar(const char *path, const char *name){
     if(isEmpty(&tampon)) return -1;
 
     /* we get the size of the file for this header */
-    sscanf(tampon.size,"%d", &filesize);
+    sscanf(tampon.size,"%o", &filesize);
 
     /* and size of its blocs */
     s = (filesize + 512 - 1)/512;
@@ -172,8 +174,8 @@ int rmTar(const char *path, const char *name){
     /* if checksum fails, then its not a proper tar */
 
     /* we get the size of the file for this header */
-    int filesize;
-    sscanf(tampon.size,"%d", &filesize);
+    unsigned int filesize;
+    sscanf(tampon.size,"%o", &filesize);
 
     /* and size of its blocs */
     s = (filesize + 512 - 1)/512;
@@ -263,7 +265,7 @@ int isTar(const char* path){
 
   /* if the file doesnt exist (or cant be opened), then its not a tar */
   fd = open(path,O_RDONLY);
-  if(fd < 0) return 0;
+  if(fd < 0) return -1;
 
   /* issue where tar made with 'tar cvf ...' arent recognized as tar */
   /* little hotfix for now */
@@ -281,8 +283,8 @@ int isTar(const char* path){
     if(check_checksum(&tampon) == 0) return 0;
 
     /* we get the size of the file for this header */
-    int filesize;
-    sscanf(tampon.size,"%d", &filesize);
+    unsigned int filesize;
+    sscanf(tampon.size,"%o", &filesize);
 
     /* and size of its blocs */
     int s = (filesize + 512 - 1)/512;
@@ -305,18 +307,29 @@ size_t offsetTar(const char *path){
   fd = open(path,O_RDONLY);
   if(fd < 0) return -1;
 
-  char buf[BLOCKSIZE];
+  struct posix_header buf;
   size_t size;
 
   while((size = read(fd, &buf, BLOCKSIZE)) > 0){
-    offset += 512;
-    if(buf[0] == '\0') return offset;
+    /* we get the size of the file for this header */
+    if(isEmpty(&buf)){ close(fd); return offset; }
+
+    unsigned int filesize;
+    sscanf(buf.size,"%o", &filesize);
+
+    /* and size of its blocs */
+    int s = (filesize + BLOCKSIZE - 1)/BLOCKSIZE;
+    offset += BLOCKSIZE * (s + 1);
+
+    lseek(fd,s * BLOCKSIZE, SEEK_CUR);
   }
 
   close(fd);
 
   return offset;
 }
+
+
 void has_Tar(char *const args[],int argc,int *tarIndex){
   for(int i=0;i<argc;i++){
     if(strstr(args[i],".tar")){//just check that the path has a tar in it
@@ -386,10 +399,8 @@ struct posix_header** posix_header_from_tarFile(char *tarname, char *path){
       /* we only add file with <= 1 '/' in their name */
       /* no '/' */
       if(strchr(tampon->name + strlen(path),'/') == NULL){
-
         result = realloc(result,sizeof(struct posix_header*) * (i + 2));
         result[i++] = tampon;
-        printf(" à été ajouté\n");
       }else{
 
       }
@@ -446,7 +457,10 @@ int exists(char *tarpath, char *filename){
 
     if(strcmp(filename,tampon.name) == 0) return 1;
     /* si c'est un dossier, on vérifie sans le '/' */
-    if(tampon.typeflag == '5' && strncmp(filename,tampon.name,strlen(tampon.name) - 1) == 0) return 1;
+    if(tampon.typeflag == '5' && strncmp(filename,tampon.name,
+      (strlen(tampon.name) > strlen(filename))?
+      strlen(tampon.name) - 1 : strlen(filename)) == 0){ printf("duh\n");
+      return 1; }
 
     /* we get the size of the file for this header */
     unsigned int filesize;

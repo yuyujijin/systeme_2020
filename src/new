@@ -19,10 +19,11 @@ int mkDir_call(int argc,char** argv){
       if(strcmp(argv[i],last_arg)) if(cd(pathminus(argv[i],last_arg)) < 0) exit(EXIT_FAILURE);
       // si on est dans un tar
       if(strlen(getenv("TARNAME"))){
-        char dirname[strlen(getenv("TARPATH")) + strlen(last_arg) + 2];
-        memset(dirname,0,strlen(getenv("TARPATH")) + strlen(last_arg) + 2);
+        char dirname[strlen(getenv("TARPATH")) + strlen(last_arg) + 3];
+        memset(dirname,0,strlen(getenv("TARPATH")) + strlen(last_arg) + 3);
 
         strcat(dirname,getenv("TARPATH"));
+        if(strlen(getenv("TARPATH"))) strcat(dirname,"/");
         strcat(dirname,last_arg);
         strcat(dirname,"/");
 
@@ -53,24 +54,27 @@ int addDirTar(char* path, char* name)
 
   //we get the offset right before the empty blocks
   size_t offt = offsetTar(path);
-
+  printf("%d\n",offt);
   // and we go there
   lseek(fd,offt,SEEK_SET);
 
+  //create new header for the new directory
   struct posix_header hd;
-  memset(&hd,'\0',sizeof(struct posix_header));
+  memset(&hd,'\0',sizeof (struct posix_header));
 
-  memcpy(hd.name, name, strlen(name));
-  sprintf(hd.mode,"0000664");
+  memset(&(hd.name),'\0',100);
+  memcpy(hd.name, name, strlen(name)+1);
 
-  sprintf(hd.size, "%011o", 0);
+  sprintf(hd.mode,"0000700");
 
-  hd.typeflag = '5';
-  memcpy(hd.magic,"ustar",5);
-  memcpy(hd.version,"00",2);
+  sprintf(hd.size,"%011o",4096); //taille a voir
+  //memcpy(hd.size,"%011o");
+
+  hd.typeflag ='5';
+  memcpy(hd.magic,TMAGIC,6);
   set_checksum(&hd);
 
-  if(check_checksum(&hd) < 0) return -1;
+  printf("%s\n",hd.name);
 
   //put the header in the tarball
   if (write(fd,&hd,sizeof(struct posix_header))<0)
@@ -85,3 +89,17 @@ int addDirTar(char* path, char* name)
 
   return 0;
 }
+
+#ifndef MKDIR_H
+#define MKDIR_H
+#define _POSIX_C_SOURCE 200809L
+#include <limits.h>
+#include <errno.h>
+#include <sys/wait.h>
+//#include "../tar.h"
+#include "../useful.h"
+#include "../tar_manipulation.h"
+
+int addDirTar(char* path, char* name);
+
+#endif
