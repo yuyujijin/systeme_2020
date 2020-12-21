@@ -43,8 +43,6 @@ int one_of_args_is_tar(int argc,char **argv);
 int execute_redirection(int argc, char **argv);
 
 int main(){
-  char* line;
-
   /* environnement variable that store the additional path */
   setenv("TARPATH","",1);
   setenv("TARNAME","",1);
@@ -59,8 +57,9 @@ int main(){
     printcwd();
 
     /* read next line */
-    line = read_line();
+    char *line = read_line();
     if(line == NULL) break;
+    if(strlen(line) <= 1) continue;
 
     /* cut it in words array with space char delimiter */
     int argc;
@@ -109,7 +108,7 @@ char *read_line(){
   memset(buf,'\0',MAX_SIZE);
   read(STDIN_FILENO, buf, MAX_SIZE);
 
-  char *s = malloc(sizeof(char) * (strlen(buf)));
+  char *s = malloc(sizeof(char) * (strlen(buf) + 1));
   memset(s,'\0',strlen(buf));
   strcpy(s,buf);
 
@@ -117,16 +116,24 @@ char *read_line(){
 }
 
 char** str_cut(char *input_str, char *tokens, int* argc){
-  //printf("je coupe : _%s_ avec le token : _%s_\n",input_str,tokens);
   *argc = 0;
-  char **words = (char **) malloc(sizeof(char*));
+
+  int i;
+  char *s = strdup(input_str);
+  // On stock l'adresse pour le futur free
+  char *adr = s;
+  // On compte le nombre d'espace pour allouer un tableau de bonne taille
+  for (i = 2; s[i]; s[i] == ' ' ? i++ : *s++);
+  free(adr);
+
+  char **words = (char **) malloc(sizeof(char*) * i);
   if(words == NULL) return NULL;
+  words[0] = NULL;
 
   /* we go through the whole sentence */
   char *word = strtok(strdup(input_str),tokens);
   while(word != NULL){
     words[(*argc)++] = trim(word);
-    words = realloc(words,((*argc) + 1) * sizeof(char*));
     words[(*argc)] = NULL;
     word = strtok(NULL,tokens);
   }

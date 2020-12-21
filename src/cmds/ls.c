@@ -4,6 +4,7 @@ char *month[]={"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "o
 
 int ls(int argc, char **argv){
   if(argc == 1) return ls_tar(0);
+  if(argc == 2 && !strcmp(argv[1],"-l")) return ls_tar(1);
   int L = optionL(argc,argv);
 
   switch (fork()) {
@@ -11,7 +12,7 @@ int ls(int argc, char **argv){
     case 0 :
     for(int i = 1; i < argc; i++){
       if(!strcmp(argv[i],"-l")) continue;
-      if(argc > 2){
+      if(argc - L > 2){
         char name[256];
         memset(name,0,256);
         sprintf(name,"%s:\n",argv[i]);
@@ -28,8 +29,11 @@ int ls(int argc, char **argv){
         // puis on essaie d'y acceder, si ça fonctionne, c'est un dossier
         // sinon c'est un dossier
         last_arg = getLastArg(argv[i]);
+
+
         // si le dernier argument != argv[i] (juste un fichier simple)
         if(strcmp(argv[i],last_arg)) if(cd(pathminus(argv[i],last_arg)) < 0) exit(EXIT_FAILURE);
+
         // on vérifie si le fichier existe (dans les 2 contextes)
         if(strlen(getenv("TARNAME"))){
           if(existsTP(last_arg) <= 0) exit(EXIT_FAILURE);
@@ -74,8 +78,6 @@ int sameLevel(char *path){
 int printOptionL(struct posix_header *tampon){
   if(tampon == NULL) return -1;
 
-  printf("%s\n",tampon->name);
-
   unsigned long int int_time=strtol(tampon->mtime,NULL,8);
   const time_t time = (time_t)int_time;
   struct tm *date=gmtime(&time);
@@ -85,12 +87,13 @@ int printOptionL(struct posix_header *tampon){
   struct passwd *uid=getpwuid(int_uid);//same
   unsigned int int_filesize=strtol(tampon->size,NULL,0);
   if(tampon->typeflag-48==5)int_filesize=4096;//Standard size for folder
-  int line_size=10+2+strlen(uid->pw_name)+strlen(gid->gr_name)+3+2+3+2+strlen(tampon->name)+9;
+  int line_size=10+2+strlen(uid->pw_name)+strlen(gid->gr_name)+3+2+3+2+strlen(tampon->name)+9+10;
   char line[line_size];
+  memset(line,0,line_size);
   char mode[11];
   convert_stmode(tampon,mode);
   if(snprintf(line,sizeof(line),"%s %s %s %s %*d %s. %02d %02d:%02d %s", //we write the data from stat on the line
-  mode,"1",uid->pw_name,gid->gr_name,10,
+  mode,"1",uid->pw_name,gid->gr_name,5,
   int_filesize,month[date->tm_mon],date->tm_mday,date->tm_hour,date->tm_min,tampon->name)<0)return-1;
   if(write(1,line,sizeof(line))<0)return -1;
   if(write(1,"\n",1)<0)return -1;
@@ -119,7 +122,13 @@ int ls_tar(int option){
           if(write(1,tampon.name + strlen(path),strlen(tampon.name) - strlen(path)) < 0)return -1;
           if(write(1," ",1) < 0)return -1;
         }else{
-          printf("tentative L\n");
+          // TODO : MISSING TOTAL
+          /* on retire le 'prefix' */
+          char newname[100];
+          memset(newname,0,100);
+          strcat(newname,tampon.name + strlen(path));
+          memcpy(tampon.name,newname,100);
+
           printOptionL(&tampon);
         }
       }
@@ -133,7 +142,7 @@ int ls_tar(int option){
     int s = (filesize + 512 - 1)/512;
     lseek(fd,s * 512,SEEK_CUR);
   }
-  if(write(1,"\n",1) < 0) return -1;
+  if(!option) if(write(1,"\n",1) < 0) return -1;
   return 0;
 }
 

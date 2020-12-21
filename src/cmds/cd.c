@@ -2,6 +2,7 @@
 
 int cd(char *path){
   char *pathcpy = strdup(path);
+  if(pathcpy[strlen(pathcpy) - 1] == '/') pathcpy[strlen(pathcpy) - 1] = '\0';
 
   char *tar_name = getenv("TARNAME");
   char *tar_path = getenv("TARPATH");
