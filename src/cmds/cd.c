@@ -34,7 +34,7 @@ char* get_full_path(char *path, char *tar_path){
   char *full_path = malloc(strlen(path) + strlen(tar_path) + 1);
   memset(full_path, '\0', strlen(path) + strlen(tar_path) + 2);
   strcat(full_path,tar_path);
-  strcat(full_path,"/");
+  if(tar_path[strlen(tar_path) - 1] != '/') strcat(full_path,"/");
   strcat(full_path,path);
   strcat(full_path,"\0");
   return full_path;

@@ -58,5 +58,5 @@ char* pathminus(char *path, char *lastarg){
 }
 
 char *getLastArg(char *path){
-  return (strrchr(path,'/') != NULL)? strrchr(path,'/') : path;
+  return (strrchr(path,'/') != NULL)? strrchr(path,'/') + 1: path;
 }

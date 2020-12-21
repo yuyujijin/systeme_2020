@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include "cmds/cd.h"
+#include <ctype.h>
 #include "tar_manipulation.h"
 #include "useful.h"
 
@@ -14,10 +15,16 @@
 #define BOLDBLUE "\x1B[1;34m"
 #define RESET "\x1B[0m"
 
+/* begintrim trims the beginning, endtrim the end, trim both */
+char *begintrim(char * s);
+char *endtrim(char *s);
+char *trim(char *s);
+
+
 /* str_cut takes a input string of size length, and returns
 a array of string containingthe sub-string of input_str delimited
 by tokens (number of sub-string is given by arc) */
-char** str_cut(char *input_str, char token,size_t length, int* argc);
+char** str_cut(char *input_str, char *tokens, int* argc);
 
 /* execute cmd argv[0] with its args */
 int execute_cmd(int argc, char**argv);
@@ -57,7 +64,7 @@ int main(){
 
     /* cut it in words array with space char delimiter */
     int argc;
-    char **args = str_cut(line,' ', strlen(line), &argc);
+    char **args = str_cut(line," ", &argc);
     if(args == NULL) return -1;
 
     free(line);
@@ -71,6 +78,7 @@ int main(){
       continue;
     }
 
+
     /* in case we're in a tarball */
     int w;
     switch(fork()){
@@ -79,13 +87,10 @@ int main(){
       default : wait(&w); break;
     }
 
-    for(int i = 0; i < argc; i++){
-      free(args[i]);
-    }
     free(args);
   }
 
-  write(STDIN_FILENO,"\n",2);
+  write(STDOUT_FILENO,"\n",2);
   return 0;
 }
 
@@ -112,41 +117,24 @@ char *read_line(){
   return s;
 }
 
-char** str_cut(char *input_str, char token, size_t length, int* argc){
+char** str_cut(char *input_str, char *tokens, int* argc){
+  //printf("je coupe : _%s_ avec le token : _%s_\n",input_str,tokens);
   *argc = 0;
-  int l = 0;
-  char **words = malloc(sizeof(char*));
+  char **words = (char **) malloc(sizeof(char*));
   if(words == NULL) return NULL;
 
   /* we go through the whole sentence */
-  unsigned i = 0;
-  while(i < length){
-    /* if found the token, or a backspace delimiter */
-    if(input_str[i] == token || input_str[i] == '\n'){
-      /* allocate space for 1 more word, take it and store it in the array */
-      words = realloc(words, (*argc + 1) * sizeof(char*));
-      char *w = malloc(sizeof(char) * l + 2);
-      if(w == NULL) return NULL;
-
-      memset(w,'\0', sizeof(char) * l + 2);
-
-      strncat(w, input_str + i - l, l);
-      strcat(w, "\0");
-
-      words[*argc] = w;
-
-      /* i++ one more time for the token we've just red */
-      (*argc)++; i++;
-      l = 0;
-    }
-    l++;i++;
+  char *word = strtok(strdup(input_str),tokens);
+  while(word != NULL){
+    words[(*argc)++] = trim(word);
+    words = realloc(words,((*argc) + 1) * sizeof(char*));
+    words[(*argc)] = NULL;
+    word = strtok(NULL,tokens);
   }
-
-  words = realloc(words, (*argc + 1) * sizeof(char*));
-  words[*argc] = NULL;
-
+  (*argc)++;
   return words;
 }
+
 
 int execute_redirection(int argc, char **argv){
   /* on créer un tableau pour contenir la seule commande a exec */
@@ -253,4 +241,25 @@ int one_of_args_is_tar(int argc, char**argv){
     if(strstr(argv[i],".tar") != NULL) return 1;
   }
   return 0;
+}
+
+
+
+char *begintrim(char *s)
+{
+    while(isspace(*s)) s++;
+    return s;
+}
+
+char *endtrim(char *s)
+{
+    char* back = s + strlen(s);
+    while(isspace(*--back));
+    *(back+1) = '\0';
+    return s;
+}
+
+char *trim(char *s)
+{
+    return endtrim(begintrim(s));
 }
