@@ -78,7 +78,6 @@ int main(){
       continue;
     }
 
-
     /* in case we're in a tarball */
     int w;
     switch(fork()){
@@ -142,7 +141,7 @@ int execute_redirection(int argc, char **argv){
   int j = 0;
 
   /* puis on parcourt tout les mots */
-  for (int i = 0; i < argc; i++) {
+  for (int i = 0; i < argc - 1; i++) {
     /* si c'est '<', on essaie de rediriger stdin dans argv[i+1] */
     if (!strcmp(argv[i], "<")) {
         int stdin = open(argv[++i], O_RDONLY, 0644);
@@ -198,6 +197,7 @@ int execute_redirection(int argc, char **argv){
        argv_no_redirection[j++] = argv[i];
      }
   }
+
 
   /* dernier argument a null (pour exec) */
   argv_no_redirection[j] = NULL;
