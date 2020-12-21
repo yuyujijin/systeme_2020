@@ -25,9 +25,8 @@ int rmdir_call(int argc,const char** argv)
 	    exit(EXIT_FAILURE);
 	  }
 
-
+	//else
 	char* cmd="rmdir ";
-	//cmd="rmdir ";
 	
 	char* arg=malloc(PATH_MAX);
 	if(arg==NULL || cmd==NULL)
@@ -39,7 +38,8 @@ int rmdir_call(int argc,const char** argv)
 	//copy of cmd in arg
 	//arg is the final entire command line
 	memcpy(arg,cmd,6);
-	
+
+	//for each arg of argv
 	for (int i=1;i<argc;i++)
 	  {
 	    //if we're working in a regular path
@@ -53,7 +53,6 @@ int rmdir_call(int argc,const char** argv)
 		    exit(EXIT_FAILURE);
 		  case 0 :
 		    //if the path point a tar, delete the tar
-		    printf ("%d\n", last_is_tar(argv[i]));
 		    if(! last_is_tar(argv[i]) &&
 		       execlp("rmdir","rmdir",argv[i],NULL) < 0)
 		      {
@@ -101,6 +100,7 @@ int last_is_tar(const char* argv)
 
 int rmdir_tar(const char *argv, int start)
 {
+  
   //name is the name of the directory in the tar
   char* name=malloc(strlen(argv)-start+1);
   memset(name,'\0',strlen(argv)-start+1);
@@ -139,9 +139,14 @@ int rmdir_tar(const char *argv, int start)
   // if > 1 we can't erase dir, it's not empty
   unsigned int count = 0;
   while(read(fd, &hd, sizeof(struct posix_header))){
+  
     if(hd.name[0]=='\0')
-      return 0;
-    //printf("%s\n",hd.name);
+      {
+	break;
+      }
+
+    //verify that dir name is empty
+    //that doesn't exist file name/xxx
     if (strlen (hd.name) >= strlen (name))
       {
 	for (unsigned int i = 0; i < strlen (name) ; i ++)
@@ -168,7 +173,7 @@ int rmdir_tar(const char *argv, int start)
     read(fd, temp, s * BLOCKSIZE);
     free(temp);
   }
-  
+
   rmTar(path, name);
   close (fd);
   free(name);
