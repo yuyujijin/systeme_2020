@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <ctype.h>
 #include "cmds/cd.h"
 #include <ctype.h>
 #include "tar_manipulation.h"
@@ -14,6 +15,8 @@
 #define BOLDGREEN "\x1B[1;32m"
 #define BOLDBLUE "\x1B[1;34m"
 #define RESET "\x1B[0m"
+
+char *required[] = {"pwd","mkdir","rmdir","mv","cp","rm","ls","cat",NULL};
 
 /* begintrim trims the beginning, endtrim the end, trim both */
 char *begintrim(char * s);
@@ -27,18 +30,25 @@ by tokens (number of sub-string is given by arc) */
 char** str_cut(char *input_str, char *tokens, int* argc);
 
 /* execute cmd argv[0] with its args */
-int execute_cmd(int argc, char**argv);
+int execute_cmd(char**argv);
 
 /* same w/ tar */
 int execute_tar_cmd(char **argv);
 
 void printcwd();
 
+/*
+  modify argv[i] if we are inside a tar. if we did cd a.tar/b and then ls c
+  --> tar_path=a.tar/b && the commands that will be executed will be ls a.tar/b/c
+  since we added the TARPATH in the arguments
+*/
+int add_tar_path_to_args(char **argv,int argc);
+
 /* read_line read the next line from stdin */
 char* read_line();
 
 /* this function check if one of the args is looking INSIDE a tar */
-int one_of_args_is_tar(int argc,char **argv);
+int one_of_args_is_tar(char **argv);
 
 int execute_redirection(int argc, char **argv);
 
@@ -52,6 +62,8 @@ int main(){
   sprintf(tarcmdspath,"%s/cmds",getcwd(NULL,0));
 
   setenv("TARCMDSPATH",tarcmdspath,1);
+
+  int backslashn = 1;
 
   while(1){
     printcwd();
@@ -68,7 +80,7 @@ int main(){
 
     free(line);
 
-    if(strcmp(args[0],"exit") == 0) exit(0);
+    if(strcmp(args[0],"exit") == 0){ backslashn = 0; break; }
 
     /* specific case for cd, because we do not execute it */
     if(strcmp(args[0],"cd") == 0){
@@ -88,7 +100,9 @@ int main(){
     free(args);
   }
 
-  write(STDOUT_FILENO,"\n",2);
+  if(backslashn) write(STDOUT_FILENO,"\n",1);
+  char *goodbye = "Merci d'avoir utilisé nos services !\n";
+  write(STDOUT_FILENO,goodbye,strlen(goodbye));
   return 0;
 }
 
@@ -106,7 +120,7 @@ void printcwd(){
 char *read_line(){
   char buf[MAX_SIZE];
   memset(buf,'\0',MAX_SIZE);
-  read(STDIN_FILENO, buf, MAX_SIZE);
+  if(read(STDIN_FILENO, buf, MAX_SIZE) <= 0) return NULL;
 
   char *s = malloc(sizeof(char) * (strlen(buf) + 1));
   memset(s,'\0',strlen(buf));
@@ -141,6 +155,69 @@ char** str_cut(char *input_str, char *tokens, int* argc){
   return words;
 }
 
+int execute_pipe_cmd(int argc, char **argv){
+  // On compte le nombre de symbole pipe
+  int pipelines = 1;
+  for(int i = 0; argv[i] != NULL; i++) if(!strcmp(trim(argv[i]),"|")) pipelines++;
+
+  // Puis on créer un tableau de tableau de string
+  // dans lequel on insert les 'lignes' (sans les pipes)
+  char *pipelines_args[pipelines][argc + 1];
+  int c = 0, l = 0;
+  for(int j = 0; argv[j] != NULL; j++){
+    if(!strcmp(trim(argv[j]),"|")){
+      pipelines_args[l][c] = NULL;
+      c = 0; l++; continue;
+    }
+    pipelines_args[l][c++] = argv[j];
+  }
+  pipelines_args[l][c] = NULL;
+
+  int nbr = pipelines;
+
+  int pipefds[nbr][2];
+
+  for(int i = 0; i < nbr; i++) pipe(pipefds[i]);
+
+  int w;
+  for(int i = 0; i < pipelines; i++){
+    int r = fork();
+    switch(r){
+      case -1 : return -1;
+      case 0 :
+      if(i == 0) close(pipefds[0][0]);
+      if(i == nbr - 1) close(pipefds[nbr - 1][1]);
+
+      for(int j = 0; j < nbr; j++){
+        if(j != i){
+          close(pipefds[j][1]);
+        }
+        if(j != i - 1){
+          close(pipefds[j][0]);
+        }
+      }
+
+      int oldstdin = dup(STDIN_FILENO);
+
+      if(i < nbr - 1) dup2(pipefds[i][1],STDOUT_FILENO);
+      if(i > 0) dup2(pipefds[i-1][0],STDIN_FILENO);
+
+      execute_cmd(pipelines_args[i]);
+
+      char s[MAX_SIZE];
+      memset(s,0,MAX_SIZE);
+      sprintf(s,"%s : commande introuvable\n",pipelines_args[i][0]);
+
+      dup2(oldstdin,STDIN_FILENO);
+      write(STDIN_FILENO,s,strlen(s));
+      exit(-1);
+      default : close(pipefds[i][1]); close(pipefds[i-1][0]); waitpid(r,&w,0); break;
+    }
+  }
+
+  for(int i = 0; i < nbr; i++){ close(pipefds[i][0]); close(pipefds[i][1]); }
+  return 1;
+}
 
 int execute_redirection(int argc, char **argv){
   /* on créer un tableau pour contenir la seule commande a exec */
@@ -208,11 +285,19 @@ int execute_redirection(int argc, char **argv){
 
   /* dernier argument a null (pour exec) */
   argv_no_redirection[j] = NULL;
-  return execute_cmd(j, argv_no_redirection);
+  return execute_pipe_cmd(j, argv_no_redirection);
 }
 
-int execute_cmd(int argc, char**argv){
-  if(strlen(getenv("TARNAME")) > 0 || one_of_args_is_tar(argc, argv)) return execute_tar_cmd(argv);
+int requiredCmds(char *s){
+  for(int i = 0; required[i] != NULL; i++){
+    if(!strcmp(trim(s),required[i])) return 1;
+  }
+  return 0;
+}
+
+int execute_cmd(char**argv){
+  if((strlen(getenv("TARNAME")) > 0 || one_of_args_is_tar(argv))
+  && requiredCmds(argv[0])) return execute_tar_cmd(argv);
   execvp(argv[0], argv);
 
   char err[MAX_SIZE];
@@ -243,14 +328,12 @@ int execute_tar_cmd(char**argv){
   exit(-1);
 }
 
-int one_of_args_is_tar(int argc, char**argv){
-  for(int i = 1; i < argc; i++){
+int one_of_args_is_tar(char**argv){
+  for(int i = 1; argv[i] != NULL; i++){
     if(strstr(argv[i],".tar") != NULL) return 1;
   }
   return 0;
 }
-
-
 
 char *begintrim(char *s)
 {
