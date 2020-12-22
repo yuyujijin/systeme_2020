@@ -2,7 +2,7 @@
 #define _XOPEN_SOURCE 500
 #include "tar_manipulation.h"
 
-int addTar(char *path, char *name/*, char typeflag*/){
+int addTar(const char *path, const char *name, char typeflag){
   int fd;
 
   fd = open(path,O_WRONLY);
@@ -11,7 +11,7 @@ int addTar(char *path, char *name/*, char typeflag*/){
   if(!isTar(path)) return -1;
 
   /* we get the offset right before the empty blocks */
-  size_t offt = offsetTar(path) - BLOCKSIZE;
+  size_t offt = offsetTar(path);
   /* and we go there */
   lseek(fd,offt + BLOCKSIZE,SEEK_CUR);
 
@@ -20,38 +20,41 @@ int addTar(char *path, char *name/*, char typeflag*/){
   unsigned int bufsize = 0;
   /* Put it at '\0' on every bytes, in case we didnt read 512 bytes */
   memset(buffer,'\0',BLOCKSIZE);
-  size_t size;
-  /* read everything from STDIN and write in the tarball */
-  while((size = read(1, buffer, BLOCKSIZE)) > 0){
-    bufsize += size;
-    if(write(fd,buffer,size) < 0) return -1;
-  }
-  /* if the last red block is < BLOCKSIZE then we have to fill with '\0' */
-  if(size < BLOCKSIZE){
-    char empty[BLOCKSIZE - size];
-    memset(empty,'\0',BLOCKSIZE - size);
-    if(write(fd,empty,BLOCKSIZE - size) < 0) return -1;
-  }
+  /* if we arent writing an empty file */
+  if(typeflag != '5'){
 
-  /* We then put the two empty blocks at the end of the tar */
-  char emptybuf[512];
-  memset(emptybuf,0,512);
-  for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
+    size_t size;
+    /* read everything from STDIN and write in the tarball */
+    while((size = read(STDIN_FILENO, buffer, BLOCKSIZE)) > 0){
+      bufsize += size;
+      if(write(fd,buffer,size) < 0) return -1;
+    }
+    /* if the last red block is < BLOCKSIZE then we have to fill with '\0' */
+    if(size < BLOCKSIZE){
+      char empty[BLOCKSIZE - size];
+      memset(empty,'\0',BLOCKSIZE - size);
+      if(write(fd,empty,BLOCKSIZE - size) < 0) return -1;
+    }
+
+    /* We then put the two empty blocks at the end of the tar */
+    char emptybuf[512];
+    memset(emptybuf,0,512);
+    for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0) return -1; }
+  }
 
   /* we put ourselves just before the blocks we've written */
   lseek(fd, offt,SEEK_SET);
 
   /* Now we write the header */
-
   struct posix_header hd;
   memset(&hd,'\0',sizeof(struct posix_header));
 
   memcpy(hd.name, name, strlen(name) + 1);
-  sprintf(hd.mode,"0000700");
+  sprintf(hd.mode,"0000664");
 
   sprintf(hd.size, "%011o", bufsize);
 
-  hd.typeflag = 0;
+  hd.typeflag = typeflag;
   memcpy(hd.magic,"ustar",5);
   memcpy(hd.version,"00",2);
   set_checksum(&hd);
@@ -65,8 +68,88 @@ int addTar(char *path, char *name/*, char typeflag*/){
   return 1;
 }
 
-int rmTar(char *path, char *name){
- struct posix_header tampon;
+struct posix_header* getHeader(const char *path, const char *name){
+  struct posix_header *tampon = malloc(sizeof(struct posix_header));
+  int fd, s;
+  unsigned int filesize;
+
+
+  /* if the file doesnt exist (or cant be opened), then its not a tar */
+  fd = open(path,O_RDONLY);
+  if(fd < 0) return NULL;
+
+  while(1){
+    /* create the buffer to read the header */
+    if(read(fd, tampon, sizeof(struct posix_header)) <= 0) return NULL;
+
+    /* if its empty, we stop */
+    if(isEmpty(tampon)) return NULL;
+
+    /* we get the size of the file for this header */
+    sscanf(tampon->size,"%o", &filesize);
+
+    /* and size of its blocs */
+    s = (filesize + 512 - 1)/512;
+
+    if(strcmp(tampon->name,name) == 0){ close(fd); return tampon; }
+
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+  }
+
+  close(fd);
+
+  return NULL;
+}
+
+int rdTar(const char *path, const char *name){
+  struct posix_header tampon;
+  int fd, s;
+  unsigned int filesize;
+
+  /* if the file doesnt exist (or cant be opened), then its not a tar */
+  fd = open(path,O_RDONLY);
+  if(fd < 0) return -1;
+
+  while(1){
+    /* create the buffer to read the header */
+    if(read(fd, &tampon, sizeof(struct posix_header)) <= 0) return -1;
+
+    /* if its empty, we stop */
+    if(isEmpty(&tampon)) return -1;
+
+    /* we get the size of the file for this header */
+    sscanf(tampon.size,"%o", &filesize);
+
+    /* and size of its blocs */
+    s = (filesize + 512 - 1)/512;
+
+    if(strcmp(tampon.name,name) == 0) break;
+
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+  }
+
+  char rd_buf[BLOCKSIZE];
+
+  for(int i = 0; i < s; i++){
+    int size;
+    if((size = (read(fd,rd_buf,BLOCKSIZE))) < 0) return -1;
+    if(filesize < BLOCKSIZE) size = filesize - 2;
+    if((write(STDIN_FILENO,rd_buf,size)) < 0) return -1;
+    filesize -= BLOCKSIZE;
+  }
+
+  close(fd);
+
+  return 1;
+}
+
+int rmTar(const char *path, const char *name){
+  struct posix_header tampon;
+
   int fd;
   char err[256];
 
@@ -93,6 +176,7 @@ int rmTar(char *path, char *name){
     /* we get the size of the file for this header */
     unsigned int filesize;
     sscanf(tampon.size,"%o", &filesize);
+
     /* and size of its blocs */
     s = (filesize + 512 - 1)/512;
 
@@ -162,21 +246,22 @@ int rmTar(char *path, char *name){
 }
 
 int isEmpty(struct posix_header* p){
-  if((p->name)[0] == '\0') return 1;
-  return 0;
+  for(int i = 0; i < BLOCKSIZE; i++) if((p->name)[i] != '\0') return 0;
+  return 1;
 }
 
-int isTar(char* path){
-  /* issue where tar made with 'tar cvf ...' arent recognized as tar */
-  /* little hotfix for now */
-  return (strstr(path,".tar") != NULL);
+int isTar(const char* path){
 
   struct posix_header tampon;
   int fd;
 
   /* if the file doesnt exist (or cant be opened), then its not a tar */
   fd = open(path,O_RDONLY);
-  if(fd < 0) return 0;
+  if(fd < 0) return -1;
+
+  /* issue where tar made with 'tar cvf ...' arent recognized as tar */
+  /* little hotfix for now */
+  return (strstr(path,".tar") != NULL);
 
   while(1){
     /* create the buffer to read the header */
@@ -190,8 +275,8 @@ int isTar(char* path){
     if(check_checksum(&tampon) == 0) return 0;
 
     /* we get the size of the file for this header */
-    int filesize;
-    sscanf(tampon.size,"%d", &filesize);
+    unsigned int filesize;
+    sscanf(tampon.size,"%o", &filesize);
 
     /* and size of its blocs */
     int s = (filesize + 512 - 1)/512;
@@ -206,7 +291,7 @@ int isTar(char* path){
   return 1;
 }
 
-size_t offsetTar(char *path){
+size_t offsetTar(const char *path){
   int fd;
   int offset = 0;
 
@@ -214,18 +299,29 @@ size_t offsetTar(char *path){
   fd = open(path,O_RDONLY);
   if(fd < 0) return -1;
 
-  char buf[BLOCKSIZE];
+  struct posix_header buf;
   size_t size;
 
   while((size = read(fd, &buf, BLOCKSIZE)) > 0){
-    offset += 512;
-    if(buf[0] == '\0') return offset;
+    /* we get the size of the file for this header */
+    if(isEmpty(&buf)){ close(fd); return offset; }
+
+    unsigned int filesize;
+    sscanf(buf.size,"%o", &filesize);
+
+    /* and size of its blocs */
+    int s = (filesize + BLOCKSIZE - 1)/BLOCKSIZE;
+    offset += BLOCKSIZE * (s + 1);
+
+    lseek(fd,s * BLOCKSIZE, SEEK_CUR);
   }
 
   close(fd);
 
   return offset;
 }
+
+
 void has_Tar(char *const args[],int argc,int *tarIndex){
   for(int i=0;i<argc;i++){
     if(strstr(args[i],".tar")){//just check that the path has a tar in it
@@ -291,42 +387,38 @@ char * data_from_tarFile(const char *path){
   }
   return NULL;
 }
-struct posix_header** posix_header_from_tarFile(const char *path){
-  int directory=0;
-  char *directory_name;//won't be used if directory==0
-  int source=is_source(path);
-  char altpath[strlen(path)+2];//we do this cause we want path to be a.tar/b/c/ and not a.tar/b/c for the case of folder
-  strcpy(altpath,path);
-  strcat(altpath,"/");
-  char *tar_path=get_tar_from_full_path(path);
-  /*If directory==1 then we are returning all the file inside path(a directory) which is inside the tar */
-  /*If source==1 then we are only returning the posix_header of all file inside a.tar (not the file in subdirectories)*/
-  /*If both are zero then we are returning all the file inside "a.tar/." */
-  int fd=open(tar_path,O_RDONLY);
-  if(fd<0)return NULL;
-  int index=0;
-  /* if the file doesnt exist (or cant be opened), then its not a tar */
-  struct posix_header** result=NULL;//only 1 header in the beginning
+
+struct posix_header** posix_header_from_tarFile(char *tarname, char *path){
+  printf("phft : %s %s\n",tarname,path);
+
+  int fd = open(tarname,O_RDONLY);
+  if(fd < 0) return NULL;
+
+  int i = 0;
+  struct posix_header** result = NULL;//only 1 header in the beginning
+
   while(1){
-    struct posix_header *tampon=malloc(sizeof(struct posix_header));
-    if(read(fd, tampon, sizeof(struct posix_header))<0)return NULL;
+
+    struct posix_header *tampon = malloc(sizeof(struct posix_header));
+    if(read(fd, tampon, sizeof(struct posix_header)) < 0) return NULL;
+
+    printf("%s\n",tampon->name);
 
     /* if its empty, we stop */
     if(isEmpty(tampon)) break;
 
-    //we check if we're looking inside a directory inside the tar
-    //if not then if we're looking for a specific file
-    if(source==0&&(strcmp(tampon->name,strstr(path,".tar/")+5)==0||strcmp(tampon->name,strstr(altpath,".tar/")+5)==0)){
-      if(tampon->typeflag=='5'){
-        directory_name=tampon->name;
-        directory=1;
-      }else if(tampon->typeflag=='0'){//we only want this file
-        free(result);
-        result=malloc(sizeof(struct posix_header));
-        result[0]=tampon;
-        return result;
+    /* same prefix */
+    if(!strncmp(tampon->name,path,strlen(path))){
+      /* we only add file with <= 1 '/' in their name */
+      /* no '/' */
+      if(strchr(tampon->name + strlen(path),'/') == NULL){
+        result = realloc(result,sizeof(struct posix_header*) * (i + 2));
+        result[i++] = tampon;
+      }else{
+
       }
     }
+
     /* we get the size of the file for this header */
     int filesize;
     sscanf(tampon->size,"%d", &filesize);
@@ -336,45 +428,38 @@ struct posix_header** posix_header_from_tarFile(const char *path){
     /* we read them if order to "ignore them" (we SHOULD use seek here) */
     char temp[s * BLOCKSIZE];
     read(fd, temp, s * BLOCKSIZE);
+  }
+  result[i] = NULL;
 
-    //we check for every file such as directory_name/.../tampon->name and excludes the directorty itself
-    //if the folder name is in the name basically //
-    if(directory==1&&strcmp(directory_name,tampon->name)!=0&&strstr(tampon->name,directory_name)!=NULL){
-      //now we check that we are in directory_name/tampon->name and not directory_name/...../tampon->name
-      char *a=strstr(tampon->name,directory_name)+strlen(directory_name);//"a/b/c"->"b/c" if a is directory_name
-      char *b=strrchr(tampon->name,'/')+1;//"a/b/c"->c if a is the directory_name and c is a file, if c is a directory "a/b/c/" -> '\0'
-      if(strcmp(a,b)==0||b[0]=='\0'){
-        result=realloc(result,sizeof(struct posix_header)+sizeof(result));
-        if(result==NULL)return NULL;
-        result[index]=tampon;
-        index++;
-      }
-    }else if(source==1){
-      //we only want the file(folder) like a.tar/b not a.tar/.../b
-      if(strstr(tampon->name,"/")==NULL||strlen(strstr(tampon->name,"/"))==1){
-        result=realloc(result,sizeof(struct posix_header)+sizeof(result));
-        if(result==NULL)return NULL;
-        result[index]=tampon;
-        index++;
-      }
-    }
-  }
-  if(result==NULL&&(source=1||directory==1)){//we don't want to return null for an empty folder or an empty tar
-   memset(result[0],'\0',128);
-   //we return a posix_header filled with 128 "null" that should work out
-    //i know it's not pretty ...
-  }
   close(fd);
   return result;
 }
 
+int existsTP(char *filename){
+  if(!strlen(getenv("TARNAME"))) return -1;
+  if(!strcmp(filename,".") || !strcmp(filename,"..")) return 1;
+
+  char s[strlen(filename) + strlen(getenv("TARPATH")) + 1];
+  memset(s,0,strlen(filename) + strlen(getenv("TARPATH")) + 1);
+  strcat(s,getenv("TARPATH"));
+  if(strlen(s)) strcat(s,"/");
+  strcat(s,filename);
+
+  return exists(getenv("TARNAME"),s);
+}
+
 int exists(char *tarpath, char *filename){
+  if(!strcmp(filename,".") || !strcmp(filename,"..")) return 1;
+
   struct posix_header tampon;
   int fd;
 
   /* if the file doesnt exist (or cant be opened), then its not a tar */
   fd = open(tarpath,O_RDONLY);
-  if(fd < 0) return 0;
+  if(fd < 0) return -1;
+
+  /* if we just check tarpath */
+  if(strlen(filename) == 0) return 1;
 
   while(1){
     /* create the buffer to read the header */
@@ -384,6 +469,11 @@ int exists(char *tarpath, char *filename){
     if(isEmpty(&tampon)) break;
 
     if(strcmp(filename,tampon.name) == 0) return 1;
+    /* si c'est un dossier, on vérifie sans le '/' */
+    if(tampon.typeflag == '5' && strncmp(filename,tampon.name,
+      (strlen(tampon.name) > strlen(filename))?
+      strlen(tampon.name) - 1 : strlen(filename)) == 0){ printf("duh\n");
+      return 1; }
 
     /* we get the size of the file for this header */
     unsigned int filesize;

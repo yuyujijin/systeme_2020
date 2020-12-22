@@ -15,16 +15,22 @@
 
 
 /* check for every header of a tar file if its checksum is correct */
-int isTar(char*);
+int isTar(const char*);
 
 /* returns the offset of the first empty block */
-size_t offsetTar(char *path);
+size_t offsetTar(const char *path);
 
 /* reads from stdin and adds it to a tar */
-int addTar(char *path, char name[100]/*,  char typeflag*/);
+int addTar(const char *path, const char *name, char typeflag);
+
+/* returns the header with specifed name */
+struct posix_header* getHeader(const char *path, const char *name);
+
+/* reads from a tar and write it in stdout */
+int rdTar(const char *path,const char *name);
 
 /* removes file with corresponding name */
-int rmTar(char *path, char *name);
+int rmTar(const char *path, const char *name);
 
 int isEmpty(struct posix_header*);
 
@@ -52,7 +58,7 @@ char* get_tar_from_full_path(const char * path);
   posix_header_from_tarFile("a.tar/d/") -> {e}
   if the path inside the tar doesn't exit or any other error it returns NULL
 */
-struct posix_header** posix_header_from_tarFile(const char *path);
+struct posix_header** posix_header_from_tarFile(char *tarname, char *path);
 
 /*
   A methods that simply return 1 if path="a.tar" or path="a.tar/" and return 0 otherwise
@@ -67,6 +73,7 @@ int is_source(const char* path);
 char * data_from_tarFile(const char *path);
 
 int exists(char* tarname, char* filename);
+int existsTP(char *filename);
 
 char *substr(const char *src,int start,int end);
 

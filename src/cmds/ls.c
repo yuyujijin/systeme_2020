@@ -1,113 +1,155 @@
 #include "ls.h"
 
 char *month[]={"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"};
-int ls(char *const args[],int argc){
-  int fork_ls=fork();
-  switch (fork_ls) {
-    case -1/* value */:perror("fork");exit(EXIT_FAILURE);
+
+int ls(int argc, char **argv){
+  if(argc == 1) return ls_tar(0);
+  if(argc == 2 && !strcmp(argv[1],"-l")) return ls_tar(1);
+  int L = optionL(argc,argv);
+
+  switch (fork()) {
+    case -1 : perror("fork");exit(EXIT_FAILURE);
     case 0 :
-      {
-        int option=has_option(args,argc);
-        int* tarIndex=malloc(sizeof(int)*argc);
-        has_Tar(args,argc,tarIndex);
-        if(argc==1){
-          if(execlp("ls","ls",NULL)<0){
-            perror("ls");
-          }
-        }
-        for(int i=1;i<argc;i++){//since args={"ls",args[0]....args[argc]} so we start with i=1
-          if(((argc>2&&option<0)||argc>3)&&option!=i){
-            if(write(1,args[i],strlen(args[i]))<0)return -1;
-            if(write(1,":\n ",2)<0)return -1;
-          }
-          //if we're working with a regular path
-          if(tarIndex[i]==0){
-            switch(fork()){
-              case -1:perror("fork_loop");exit(EXIT_FAILURE);
-              case 0 :
-                if(option==-1&&execlp("ls","ls",args[i],NULL)<0){
-                  perror(args[i]);
-                }else if(i!=option&&execlp("ls","ls","-l",args[i],NULL)<0){
-                  perror(args[i]);
-                }
-                if(i!=option&&write(1,"\n",1)<0)return -1;
-                exit(EXIT_SUCCESS);
-                break;
-              default :wait(NULL);break;
-            }
-          }
-          //if we're working with tar
-          else if(tarIndex[i]==1){
-            if(ls_tar(args[i],option)<0){
-              write(1,"ls: Impossible d'accéder à '",29);
-              write(1,args[i],strlen(args[i]));
-              write(1,"': Aucun fichier ou dossier de ce type\n",39);
-            }
-            if(write(1,"\n",1)<0)return -1;
-          }
-        }
-        exit(EXIT_SUCCESS);
-        break;
+    for(int i = 1; i < argc; i++){
+      if(!strcmp(argv[i],"-l")) continue;
+      if(argc - L > 2){
+        char name[256];
+        memset(name,0,256);
+        sprintf(name,"%s:\n",argv[i]);
+        write(STDOUT_FILENO,name,strlen(name));
       }
+      char *last_arg;
+      switch (fork()) {
+        case -1 : perror("fork");exit(EXIT_FAILURE);
+        case 0 :
+        // on tente d'acceder au chemin, sans le dernier argument
+        // si il est non accessible -> erreur
+        // ensuite, on verifie si le dernier arg existe dans le contexte actuel
+        // sinon, erreur ->
+        // puis on essaie d'y acceder, si ça fonctionne, c'est un dossier
+        // sinon c'est un dossier
+        last_arg = getLastArg(argv[i]);
+
+
+        // si le dernier argument != argv[i] (juste un fichier simple)
+        if(strcmp(argv[i],last_arg)) if(cd(pathminus(argv[i],last_arg)) < 0) exit(EXIT_FAILURE);
+
+        // on vérifie si le fichier existe (dans les 2 contextes)
+        if(strlen(getenv("TARNAME"))){
+          if(existsTP(last_arg) <= 0) exit(EXIT_FAILURE);
+        }else{
+          int fd = open(last_arg,O_RDONLY);
+          if(fd < 0) exit(EXIT_FAILURE);
+          close(fd);
+        }
+        // si on peut y acceder
+        if(cd(last_arg) > 0){
+          if(strlen(getenv("TARNAME"))) return ls_tar(L);
+          if(L) execlp("ls","ls","-l",NULL);
+          execlp("ls","ls",NULL);
+        }
+        // sinon on print le nom (non dossier)
+        write(STDOUT_FILENO,last_arg,strlen(last_arg));
+        write(STDOUT_FILENO,"\n",1);
+        exit(1);
+        default : wait(NULL); break;
+      }
+      if(i < argc - 1) write(STDOUT_FILENO,"\n",1);
+    }
+    exit(0);
     default : wait(NULL);break;
   }
   return 0;
 }
 
-int has_option(char *const args[],int argc){//if option<-1 then "ls" else "ls -l"
+int optionL(int argc, char **argv){//if option<-1 then "ls" else "ls -l"
   for(int i=0;i<argc;i++){
-    if(strcmp(args[i],"-l")==0)return i;
-  }
-  return -1;
-}
-
-int ls_tar(const char *args,int option){
-  struct posix_header** posix_header=posix_header_from_tarFile(args);
-  if(posix_header==NULL)return -1;
-  if(option==-1){
-    for(int i=0;posix_header[i]!=NULL;i++){
-      if(write(1,posix_header[i]->name,strlen(posix_header[i]->name))<0)return -1;
-      if(write(1," ",1)<0)return -1;
-    }
-    return 0;
-  }
-  // now we are in the case of "ls -l"
-  int max_size=maxNbDigit(posix_header);
-  for(int i=0;posix_header[i]!=NULL;i++){
-    unsigned long int int_time=strtol(posix_header[i]->mtime,NULL,8);
-    const time_t time = (time_t)int_time;
-    struct tm *date=gmtime(&time);
-    unsigned int int_gid=strtol(posix_header[i]->gid,NULL,0);
-    unsigned int int_uid=strtol(posix_header[i]->uid,NULL,0);
-    struct group *gid=getgrgid(int_gid);//to get the gid name because info.st_gid only gives us an int
-    struct passwd *uid=getpwuid(int_uid);//same
-    unsigned int int_filesize=strtol(posix_header[i]->size,NULL,0);
-    if(posix_header[i]->typeflag-48==5)int_filesize=4096;//Standard size for folder
-    int line_size=10+2+strlen(uid->pw_name)+strlen(gid->gr_name)+max_size+3+2+3+2+strlen(posix_header[i]->name)+9;
-    char line[line_size];
-    char mode[11];
-    convert_stmode(posix_header[i],mode);
-    if(snprintf(line,sizeof(line),"%s %s %s %s %*d %s. %02d %02d:%02d %s", //we write the data from stat on the line
-    mode,"1",uid->pw_name,gid->gr_name,max_size,
-    int_filesize,month[date->tm_mon],date->tm_mday,date->tm_hour,date->tm_min,posix_header[i]->name)<0)return-1;
-    if(write(1,line,sizeof(line))<0)return -1;
-    if(write(1,"\n",1)<0)return -1;
+    if(!strcmp(argv[i],"-l")) return 1;
   }
   return 0;
-
 }
+
+int sameLevel(char *path){
+  char *s = strchr(path,'/');
+  if(s == NULL || s[1] == '\0') return 1;
+  return 0;
+}
+
+int printOptionL(struct posix_header *tampon){
+  if(tampon == NULL) return -1;
+
+  unsigned long int int_time=strtol(tampon->mtime,NULL,8);
+  const time_t time = (time_t)int_time;
+  struct tm *date=gmtime(&time);
+  unsigned int int_gid=strtol(tampon->gid,NULL,0);
+  unsigned int int_uid=strtol(tampon->uid,NULL,0);
+  struct group *gid=getgrgid(int_gid);//to get the gid name because info.st_gid only gives us an int
+  struct passwd *uid=getpwuid(int_uid);//same
+  unsigned int int_filesize=strtol(tampon->size,NULL,0);
+  if(tampon->typeflag-48==5)int_filesize=4096;//Standard size for folder
+  int line_size=10+2+strlen(uid->pw_name)+strlen(gid->gr_name)+3+2+3+2+strlen(tampon->name)+9+10;
+  char line[line_size];
+  memset(line,0,line_size);
+  char mode[11];
+  convert_stmode(tampon,mode);
+  if(snprintf(line,sizeof(line),"%s %s %s %s %*d %s. %02d %02d:%02d %s", //we write the data from stat on the line
+  mode,"1",uid->pw_name,gid->gr_name,5,
+  int_filesize,month[date->tm_mon],date->tm_mday,date->tm_hour,date->tm_min,tampon->name)<0)return-1;
+  if(write(1,line,sizeof(line))<0)return -1;
+  if(write(1,"\n",1)<0)return -1;
+
+  return 1;
+}
+
+int ls_tar(int option){
+  int fd = open(getenv("TARNAME"),O_RDONLY);
+  char *path = getenv("TARPATH");
+  if(fd < 0) return -1;
+
+  while(1){
+
+    struct posix_header tampon;
+    if(read(fd, &tampon, sizeof(struct posix_header)) < 0) return -1;
+
+    /* if its empty, we stop */
+    if(isEmpty(&tampon)) break;
+
+    /* same prefix */
+    if(!strncmp(tampon.name,path,strlen(path))){
+      /* are on 'same level' (and not the same)*/
+      if(strcmp(tampon.name,path) != 0 && sameLevel(tampon.name + strlen(path))){
+        if(!option){
+          if(write(1,tampon.name + strlen(path),strlen(tampon.name) - strlen(path)) < 0)return -1;
+          if(write(1," ",1) < 0)return -1;
+        }else{
+          // TODO : MISSING TOTAL
+          /* on retire le 'prefix' */
+          char newname[100];
+          memset(newname,0,100);
+          strcat(newname,tampon.name + strlen(path));
+          memcpy(tampon.name,newname,100);
+
+          printOptionL(&tampon);
+        }
+      }
+    }
+
+    /* we get the size of the file for this header */
+    unsigned int filesize;
+    sscanf(tampon.size,"%o", &filesize);
+
+    /* and size of its blocs */
+    int s = (filesize + 512 - 1)/512;
+    lseek(fd,s * 512,SEEK_CUR);
+  }
+  if(!option) if(write(1,"\n",1) < 0) return -1;
+  return 0;
+}
+
+
 int nbDigit (int n) {//return the number of digit of a certain integer. We need it for info.st_size
     if (n == 0) return 1;
     return floor (log10 (abs (n))) + 1;
-}
-int maxNbDigit(struct posix_header** posix_header){// {1234,12,1} return 4
-  int max=0;
-  for(int i=0;posix_header[i]!=NULL;i++){
-    int s=strtol(posix_header[i]->size,NULL,0);
-    if(posix_header[i]->typeflag=='5')s=4096;
-    if(max<nbDigit(s))max=nbDigit(s);
-  }
-  return max;
 }
 void convert_stmode(struct posix_header* posix_header,char mode[]){//0000644 -> -rx-r--r--
   if(posix_header->typeflag-48==0)mode[0]='-';
@@ -138,6 +180,6 @@ void convert_stmode(struct posix_header* posix_header,char mode[]){//0000644 -> 
   }
   mode[10]='\0';
 }
-int main(int argc,char *const argv[]){
-  return ls(argv,argc);
+int main(int argc,char **argv){
+  return ls(argc,argv);
 }
