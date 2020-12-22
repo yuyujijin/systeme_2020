@@ -42,17 +42,21 @@ int rmdir_call(int argc,const char** argv)
 	//for each arg of argv
 	for (int i=1;i<argc;i++)
 	  {
-	    char *pathname = malloc(strlen (TARPATH) + strlen (TARNAME) + 2);
-	    assert (pathname != NULL);
+	    char *pathname = malloc(strlen (getenv ("TARPATH")) + strlen (getenv("TARNAME")) + 2);
+	    if (pathname == NULL)
+	      {
+		perror ("rmdir");
+		exit (EXIT_FAILURE);
+	      }
 
-	    memset(pathname, '\0');
-	    strcat (pathname, TARPATH);
+	    memset(pathname, '\0', sizeof(strlen (getenv ("TARPATH")) + strlen (getenv("TARNAME")) + 2));
+	    strcat (pathname, getenv("TARPATH"));
 	    strcat (pathname, "/");
-	    strcat (pathname, TARNAME);
+	    strcat (pathname, getenv("TARNAME"));
 	    
 	    //if we're working in a regular path
 	    int tar_index = has_tar(argv[i]);
-	    if(!tar_index && (tar_path == NULL))
+	    if(!tar_index && (getenv("TARPATH")[0]=='\0'))
 	      {
 		switch(fork())
 		  {
@@ -74,14 +78,14 @@ int rmdir_call(int argc,const char** argv)
 	    //if we're in a tar
 	    else
 	      {
-		if(TARPATH == NULL) {
+		if (getenv("TARPATH")[0]=='\0') {
 		  if(rmdir_tar(argv[i],tar_index) < 0)
 		    {
 		      perror("A REFLECHIIIRRR");
 		    }
 		}
 		else {
-		  if(rmdir_tar(pathname,strlen(TARPATH)+1) < 0)
+		  if(rmdir_tar(pathname,strlen(getenv("TARPATH"))+1) < 0)
 		    perror("A REFLECHIIIRRR");
 		}
 	      }
