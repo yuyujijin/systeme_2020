@@ -24,6 +24,15 @@ int cd(char *path){
   if(strlen(sp.tar_name) > 0 && !exists(tarball_path, sp.tar_path)){ errno = ENOENT;  return -1; }
 
   if(strlen(sp.path) > 0 && chdir(sp.path) < 0) return -1;
+
+  if(strlen(sp.tar_name) > 0){
+    int fd = open(sp.tar_name,O_RDONLY);
+    if(fd < 0) return -1;
+    close(fd);
+
+    if(strlen(sp.tar_path) > 0 && !exists(sp.tar_name,sp.tar_path)) return -1;
+  }
+
   setenv("TARNAME",sp.tar_name,1);
   setenv("TARPATH",sp.tar_path,1);
 
