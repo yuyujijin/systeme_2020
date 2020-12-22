@@ -1,6 +1,7 @@
 #include "cd.h"
 
 int cd(char *path){
+printf("path : %s\n");
   char *pathcpy = strdup(path);
   if(pathcpy[strlen(pathcpy) - 1] == '/') pathcpy[strlen(pathcpy) - 1] = '\0';
 
