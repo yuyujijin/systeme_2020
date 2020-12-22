@@ -2,11 +2,12 @@
 
 int cd(char *path){
   char *pathcpy = strdup(path);
+  if(pathcpy[strlen(pathcpy) - 1] == '/') pathcpy[strlen(pathcpy) - 1] = '\0';
 
   char *tar_name = getenv("TARNAME");
   char *tar_path = getenv("TARPATH");
   char *fp = get_full_path(get_full_path(pathcpy,tar_path),tar_name);
-  special_path sp = path_simplifier(fp);
+  special_path sp = special_path_maker(fp);
   free(fp);
   /*
   now we have just to check if :
@@ -23,6 +24,15 @@ int cd(char *path){
   if(strlen(sp.tar_name) > 0 && !exists(tarball_path, sp.tar_path)){ errno = ENOENT;  return -1; }
 
   if(strlen(sp.path) > 0 && chdir(sp.path) < 0) return -1;
+
+  if(strlen(sp.tar_name) > 0){
+    int fd = open(sp.tar_name,O_RDONLY);
+    if(fd < 0) return -1;
+    close(fd);
+
+    if(strlen(sp.tar_path) > 0 && !exists(sp.tar_name,sp.tar_path)) return -1;
+  }
+
   setenv("TARNAME",sp.tar_name,1);
   setenv("TARPATH",sp.tar_path,1);
 
@@ -34,13 +44,13 @@ char* get_full_path(char *path, char *tar_path){
   char *full_path = malloc(strlen(path) + strlen(tar_path) + 1);
   memset(full_path, '\0', strlen(path) + strlen(tar_path) + 2);
   strcat(full_path,tar_path);
-  strcat(full_path,"/");
+  if(tar_path[strlen(tar_path) - 1] != '/') strcat(full_path,"/");
   strcat(full_path,path);
   strcat(full_path,"\0");
   return full_path;
 }
 
-struct special_path path_simplifier(char* path){
+struct special_path special_path_maker(char* path){
   /* words will act as a lifo structure */
   char *words[64];
   int size = 0, pathsize = 0;

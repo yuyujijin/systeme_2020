@@ -21,10 +21,9 @@ and return a struct containing the new path, the tarball's path and the tarball'
 
 it works using a LIFO structure (a stack), and adding every words from path in it, and creating a struct special_path from it
 */
-struct special_path path_simplifier(char* path);
 /* get_full_path concatenates tar_path + "/" + path */
 char* get_full_path(char *path, char *tar_path);
-
+struct special_path special_path_maker(char *path);
 int cd(char *path);
 
 #endif

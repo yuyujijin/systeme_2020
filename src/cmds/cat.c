@@ -7,6 +7,11 @@ int cat(char *const args[],int argc){
       {
         int* tarIndex=malloc(sizeof(int)*argc);
         has_Tar(args,argc,tarIndex);
+        if(argc==1){
+          if(execlp("cat","cat",NULL)<0){
+            perror("cat");
+          }
+        }
         for(int i=1;i<argc;i++){//since args={"cat",args[1]....args[argc]} so we start with i=1
           //if we're working with a regular path
           if(tarIndex[i]==0){

@@ -1,26 +1,39 @@
 #define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <ctype.h>
 #include "cmds/cd.h"
+#include <ctype.h>
+#include "tar_manipulation.h"
+#include "useful.h"
 
 #define MAX_SIZE 256
 #define BOLDGREEN "\x1B[1;32m"
 #define BOLDBLUE "\x1B[1;34m"
 #define RESET "\x1B[0m"
 
+char *required[] = {"pwd","mkdir","rmdir","mv","cp","rm","ls","cat",NULL};
+
+/* begintrim trims the beginning, endtrim the end, trim both */
+char *begintrim(char * s);
+char *endtrim(char *s);
+char *trim(char *s);
+
+
 /* str_cut takes a input string of size length, and returns
 a array of string containingthe sub-string of input_str delimited
 by tokens (number of sub-string is given by arc) */
-char** str_cut(char *input_str, char token,size_t length, int* argc);
+char** str_cut(char *input_str, char *tokens, int* argc);
 
 /* execute cmd argv[0] with its args */
-int execute_cmd(char **argv);
+int execute_cmd(char**argv);
 
 /* same w/ tar */
-int execute_tar_cmd(char **argv,int argc);
+int execute_tar_cmd(char **argv);
 
 void printcwd();
 
@@ -35,32 +48,39 @@ int add_tar_path_to_args(char **argv,int argc);
 char* read_line();
 
 /* this function check if one of the args is looking INSIDE a tar */
-int one_of_args_is_tar(char **argv, int argc);
+int one_of_args_is_tar(char **argv);
+
+int execute_redirection(int argc, char **argv);
 
 int main(){
-  char* line;
-
   /* environnement variable that store the additional path */
   setenv("TARPATH","",1);
   setenv("TARNAME","",1);
+
+  char tarcmdspath[strlen(getcwd(NULL,0)) + strlen("/cmds")];
+  memset(tarcmdspath,0,strlen(getcwd(NULL,0)) + strlen("/cmds"));
+  sprintf(tarcmdspath,"%s/cmds",getcwd(NULL,0));
+
+  setenv("TARCMDSPATH",tarcmdspath,1);
+
+  int backslashn = 1;
 
   while(1){
     printcwd();
 
     /* read next line */
-    line = read_line();
+    char *line = read_line();
     if(line == NULL) break;
-
-    if(strlen(line) <= 0) continue;
+    if(strlen(line) <= 1) continue;
 
     /* cut it in words array with space char delimiter */
     int argc;
-    char **args = str_cut(line,' ', strlen(line), &argc);
+    char **args = str_cut(line," ", &argc);
     if(args == NULL) return -1;
 
     free(line);
 
-    if(strcmp(args[0],"exit") == 0) exit(0);
+    if(strcmp(args[0],"exit") == 0){ backslashn = 0; break; }
 
     /* specific case for cd, because we do not execute it */
     if(strcmp(args[0],"cd") == 0){
@@ -70,19 +90,19 @@ int main(){
     }
 
     /* in case we're in a tarball */
-    if(strstr(getenv("TARPATH"),".tar") != NULL
-       || one_of_args_is_tar(args + 1, argc -1)){
-      if(execute_tar_cmd(args,argc) < 0)
-	printf("Commande %s non reconnue\n",args[0]);
-    }else{
-      if(execute_cmd(args) < 0)
-	printf("Commande %s non reconnue\n",args[0]);
+    int w;
+    switch(fork()){
+      case -1: return -1;
+      case 0 : execute_redirection(argc,args); exit(-1);
+      default : wait(&w); break;
     }
 
     free(args);
   }
 
-  write(STDIN_FILENO,"\n",2);
+  if(backslashn) write(STDOUT_FILENO,"\n",1);
+  char *goodbye = "Merci d'avoir utilisé nos services !\n";
+  write(STDOUT_FILENO,goodbye,strlen(goodbye));
   return 0;
 }
 
@@ -100,123 +120,236 @@ void printcwd(){
 char *read_line(){
   char buf[MAX_SIZE];
   memset(buf,'\0',MAX_SIZE);
-  read(STDIN_FILENO, buf, MAX_SIZE);
+  if(read(STDIN_FILENO, buf, MAX_SIZE) <= 0) return NULL;
 
-  char *s = malloc(sizeof(char) * (strlen(buf)));
+  char *s = malloc(sizeof(char) * (strlen(buf) + 1));
   memset(s,'\0',strlen(buf));
   strcpy(s,buf);
 
   return s;
 }
 
-char** str_cut(char *input_str, char token, size_t length, int* argc){
+char** str_cut(char *input_str, char *tokens, int* argc){
   *argc = 0;
-  int l = 0;
-  char **words = malloc(sizeof(char*));
+
+  int i;
+  char *s = strdup(input_str);
+  // On stock l'adresse pour le futur free
+  char *adr = s;
+  // On compte le nombre d'espace pour allouer un tableau de bonne taille
+  for (i = 2; s[i]; s[i] == ' ' ? i++ : *s++);
+  free(adr);
+
+  char **words = (char **) malloc(sizeof(char*) * i);
   if(words == NULL) return NULL;
+  words[0] = NULL;
 
   /* we go through the whole sentence */
-  unsigned i = 0;
-  while(i < length){
-    /* if found the token, or a backspace delimiter */
-    if(input_str[i] == token || input_str[i] == '\n'){
-      /* allocate space for 1 more word, take it and store it in the array */
-      words = realloc(words, (*argc + 1) * sizeof(char*));
-      char *w = malloc(sizeof(char) * l + 2);
-      if(w == NULL) return NULL;
-
-      memset(w,'\0', sizeof(char) * l + 2);
-
-      strncat(w, input_str + i - l, l);
-      strcat(w, "\0");
-
-      words[*argc] = w;
-
-      /* i++ one more time for the token we've just red */
-      (*argc)++; i++;
-      l = 0;
-    }
-    l++;i++;
+  char *word = strtok(strdup(input_str),tokens);
+  while(word != NULL){
+    words[(*argc)++] = trim(word);
+    words[(*argc)] = NULL;
+    word = strtok(NULL,tokens);
   }
-
-  words = realloc(words, (*argc + 1) * sizeof(char*));
-  words[*argc] = NULL;
-
+  (*argc)++;
   return words;
 }
 
-int add_tar_path_to_args(char **argv,int argc){
-  char *tar_path=getenv("TARPATH");
-  if(argc==1){//if we just say "ls" we gotta show what's inside the tarpath and not pdw
-    argc+=1;
-    char *cmd=argv[0];
-    if(argv==NULL)return -1;
-    argv[0]=cmd;
-    argv[1]=tar_path;
-    return 0;
+int execute_pipe_cmd(int argc, char **argv){
+  // On compte le nombre de symbole pipe
+  int pipelines = 1;
+  for(int i = 0; argv[i] != NULL; i++) if(!strcmp(trim(argv[i]),"|")) pipelines++;
+
+  // Puis on créer un tableau de tableau de string
+  // dans lequel on insert les 'lignes' (sans les pipes)
+  char *pipelines_args[pipelines][argc + 1];
+  int c = 0, l = 0;
+  for(int j = 0; argv[j] != NULL; j++){
+    if(!strcmp(trim(argv[j]),"|")){
+      pipelines_args[l][c] = NULL;
+      c = 0; l++; continue;
+    }
+    pipelines_args[l][c++] = argv[j];
   }
-  for(int i=1;i<argc;i++){
-    if(argv[i][0]!='-'){//we don't take option only path
-      char *tar_arg=malloc(strlen(argv[i])+strlen(tar_path)+2);
-      if(tar_arg==NULL)return -1;
-      strcpy(tar_arg,tar_path);
-      if(argv[i][0]!='/')strcat(tar_arg,"/");
-      strcat(tar_arg,argv[i]);
-      argv[i]=tar_arg;
+  pipelines_args[l][c] = NULL;
+
+  int nbr = pipelines;
+
+  int pipefds[nbr][2];
+
+  for(int i = 0; i < nbr; i++) pipe(pipefds[i]);
+
+  int w;
+  for(int i = 0; i < pipelines; i++){
+    int r = fork();
+    switch(r){
+      case -1 : return -1;
+      case 0 :
+      if(i == 0) close(pipefds[0][0]);
+      if(i == nbr - 1) close(pipefds[nbr - 1][1]);
+
+      for(int j = 0; j < nbr; j++){
+        if(j != i){
+          close(pipefds[j][1]);
+        }
+        if(j != i - 1){
+          close(pipefds[j][0]);
+        }
+      }
+
+      int oldstdin = dup(STDIN_FILENO);
+
+      if(i < nbr - 1) dup2(pipefds[i][1],STDOUT_FILENO);
+      if(i > 0) dup2(pipefds[i-1][0],STDIN_FILENO);
+
+      execute_cmd(pipelines_args[i]);
+
+      char s[MAX_SIZE];
+      memset(s,0,MAX_SIZE);
+      sprintf(s,"%s : commande introuvable\n",pipelines_args[i][0]);
+
+      dup2(oldstdin,STDIN_FILENO);
+      write(STDIN_FILENO,s,strlen(s));
+      exit(-1);
+      default : close(pipefds[i][1]); close(pipefds[i-1][0]); waitpid(r,&w,0); break;
     }
   }
-  return 0;
-}
 
-
-int execute_cmd(char **argv){
-  int found, w;
-
-  int r = fork();
-  /* exit option */
-  switch(r){
-    case -1 : return -1;
-    case 0 :
-    found = execvp(argv[0], argv);
-    if(found < 0) return -1;
-    return 1;
-    default :
-    wait(&w); break;
-  }
-
+  for(int i = 0; i < nbr; i++){ close(pipefds[i][0]); close(pipefds[i][1]); }
   return 1;
 }
 
-int execute_tar_cmd(char **argv,int argc){
-  int found, w;
+int execute_redirection(int argc, char **argv){
+  /* on créer un tableau pour contenir la seule commande a exec */
+  char *argv_no_redirection[argc + 1];
+  int j = 0;
 
-  char* newargv0 = malloc(sizeof(char) * (strlen(argv[0]) + strlen("cmds/./") + 1));
-  memset(newargv0, '\0', strlen(argv[0]) + strlen("cmds/./") + 1);
-  strcat(newargv0,"cmds/./");
-  strcat(newargv0,argv[0]);
-  strcat(newargv0,"\0");
-  argv[0] = newargv0;
+  /* puis on parcourt tout les mots */
+  for (int i = 0; i < argc - 1; i++) {
+    /* si c'est '<', on essaie de rediriger stdin dans argv[i+1] */
+    if (!strcmp(argv[i], "<")) {
+        int stdin = open(argv[++i], O_RDONLY, 0644);
+        if(stdin < 0) {
+            perror("impossible d'ouvrir le fichier.\n");
+            return -1;
+        }
+        dup2(stdin, STDIN_FILENO);
+        close(stdin);
+        continue;
+    }
 
-  int r = fork();
-  /* exit option */
-  switch(r){
-    case -1 : return -1;
-    case 0 :
-    found = execvp(argv[0], argv);
-    if(found < 0) return -1;
-    return 1;
-    default :
-    wait(&w); break;
+    /*
+    si c'est '>', on essaie de rediriger stdout dans argv[i+1]
+    si c'est '2>', on essaie de rediriger stderr dans argv[i+1]
+    */
+    if (!strcmp(argv[i],"2>") || !strcmp(argv[i], ">")) {
+        int stdout = open(argv[++i], O_WRONLY | O_CREAT, 0644);
+        if (stdout < 0) {
+            perror("impossible de créer le fichier.\n");
+            return -1;
+        }
+        if(!strcmp(argv[i - 1], ">")) dup2(stdout, STDOUT_FILENO);
+        if(!strcmp(argv[i - 1], "2>")) dup2(stdout, STDERR_FILENO);
+        close(stdout);
+        continue;
+    }
+
+    /* comme au dessus, mais en mode APPEND */
+    if (!strcmp(argv[i],"2>>") || !strcmp(argv[i], ">>")) {
+        int concat = open(argv[++i], O_CREAT | O_RDWR | O_APPEND, 0644);
+        if (concat < 0) {
+            perror("impossible de concatener au fichier.\n");
+            return -1;
+        }
+        if(!strcmp(argv[i - 1],">>")) dup2(concat, STDOUT_FILENO);
+        if(!strcmp(argv[i - 1],"2>>")) dup2(concat, STDERR_FILENO);
+
+        close(concat);
+        continue;
+    }
+
+    /* sortie erreur dans la sortie standard */
+    if (!strcmp(argv[i],"2>&1")) {
+      dup2(STDIN_FILENO,STDERR_FILENO);
+      i++; continue;
+    }
+
+    /* sinon, on ajoute l'argument au tableau des executions */
+    if(j > 0){
+       argv_no_redirection[j++] = path_simplifier(argv[i]);
+     }else{
+       argv_no_redirection[j++] = argv[i];
+     }
   }
 
-  free(newargv0);
 
-  return 1;
+  /* dernier argument a null (pour exec) */
+  argv_no_redirection[j] = NULL;
+  return execute_pipe_cmd(j, argv_no_redirection);
 }
 
-int one_of_args_is_tar(char **argv, int argc){
-  for(int i = 0; i < argc; i++){
-    if(strstr(argv[i],".tar/") != NULL) return 1;
+int requiredCmds(char *s){
+  for(int i = 0; required[i] != NULL; i++){
+    if(!strcmp(trim(s),required[i])) return 1;
   }
   return 0;
+}
+
+int execute_cmd(char**argv){
+  if((strlen(getenv("TARNAME")) > 0 || one_of_args_is_tar(argv))
+  && requiredCmds(argv[0])) return execute_tar_cmd(argv);
+  execvp(argv[0], argv);
+
+  char err[MAX_SIZE];
+  memset(err,0,MAX_SIZE);
+  sprintf(err,"Commande %s inconnue\n",argv[0]);
+  write(STDERR_FILENO,err,strlen(err));
+
+  exit(-1);
+}
+
+int execute_tar_cmd(char**argv){
+  /* on récupère le path ou sont stockés les fonctions sur les tars */
+  char *pathname = getenv("TARCMDSPATH");
+  /* on y concatene la commande voulue */
+  char pathpluscmd[strlen(pathname) + 1 + strlen(argv[0])];
+  memset(pathpluscmd,0,strlen(pathname) + 1 + strlen(argv[0]));
+  sprintf(pathpluscmd,"%s/%s",pathname,argv[0]);
+
+  /* et on exec */
+  execv(pathpluscmd,argv);
+
+  /* cas d'une erreur */
+  char err[MAX_SIZE];
+  memset(err,0,MAX_SIZE);
+  sprintf(err,"Commande %s inconnue\n",argv[0]);
+  write(STDERR_FILENO,err,strlen(err));
+
+  exit(-1);
+}
+
+int one_of_args_is_tar(char**argv){
+  for(int i = 1; argv[i] != NULL; i++){
+    if(strstr(argv[i],".tar") != NULL) return 1;
+  }
+  return 0;
+}
+
+char *begintrim(char *s)
+{
+    while(isspace(*s)) s++;
+    return s;
+}
+
+char *endtrim(char *s)
+{
+    char* back = s + strlen(s);
+    while(isspace(*--back));
+    *(back+1) = '\0';
+    return s;
+}
+
+char *trim(char *s)
+{
+    return endtrim(begintrim(s));
 }

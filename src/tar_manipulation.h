@@ -19,7 +19,7 @@ int isTar(const char*);
 size_t offsetTar(const char *path);
 
 /* reads from stdin and adds it to a tar */
-int addTar(const char *path, const char *name, char typeflag, int empty);
+int addTar(const char *path, const char *name, char typeflag);
 
 /* returns the header with specifed name */
 struct posix_header* getHeader(const char *path, const char *name);
@@ -52,7 +52,7 @@ char* get_tar_from_full_path(const char * path);
   posix_header_from_tarFile("a.tar/d/") -> {e}
   if the path inside the tar doesn't exit or any other error it returns NULL
 */
-struct posix_header** posix_header_from_tarFile(const char *path);
+struct posix_header** posix_header_from_tarFile(char *tarname, char *path);
 
 /*
   A methods that simply return 1 if path="a.tar" or path="a.tar/" and return 0 otherwise
@@ -67,5 +67,6 @@ int is_source(const char* path);
 char * data_from_tarFile(const char *path);
 
 int exists(char* tarname, char* filename);
+int existsTP(char *filename);
 
 #endif

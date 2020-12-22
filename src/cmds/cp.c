@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "cd.h"
+#include "../useful.h"
 
 #define BUF_SIZE 512
 
@@ -16,8 +17,6 @@ int cp_nargs(char**argv, int argc);
 /* if last arg of argv[1] is a dir, creates directory with same name in argv[2]
 and then copies every files in argv[2] with cp_2args */
 int cp_r(char** argv);
-/* returns path minus lastarg */
-char* pathminus(char *path, char *lastarg);
 /* tries to cd to path minus lastarg */
 int cdTo(char *path, char* last_arg);
 /* reads data in pipe and writes it in file_name. tar specifies if its a tar or not */
@@ -42,7 +41,6 @@ int main(int argc, char**argv){
 }
 
 int cp_r(char **argv){
-  printf("%s : %s\n",argv[0],argv[1]);
   char *last_arg_2 = (strrchr(argv[1],'/') != NULL)? strrchr(argv[1],'/') : argv[1];
   /* argv[0] n'est pas un dossier (= on ne peut pas y acceder ) */
   /* alors on tente juste de copier argv[0] à argv[1] */
@@ -148,7 +146,7 @@ int cp_dir(char *dirname, char *path){
     if(tpcc[strlen(tpcc) - 1] != '/') strcat(p,"/");
     strcat(p,"\0");
     if(exists(getenv("TARNAME"),p)) return -1;
-    return addTar(getenv("TARNAME"),p,'5',1);
+    return addTar(getenv("TARNAME"),p,'5');
   }
   /* pas dans un tar */
   struct stat st = {0};
@@ -226,7 +224,7 @@ int readPipeWriteFile(char *file_name, int tar, int pipe_fd){
     int old_stdout = dup(STDIN_FILENO);
     dup2(pipe_fd, STDIN_FILENO);
 
-    if(addTar(getenv("TARNAME"),tpcc,'0',0) < 0){ perror("cp"); return -1; }
+    if(addTar(getenv("TARNAME"),tpcc,'0') < 0){ perror("cp"); return -1; }
 
     dup2(old_stdout,STDIN_FILENO);
     close(pipe_fd);
@@ -279,14 +277,6 @@ int cdTo(char *path, char* last_arg){
   if(cd(s) < 0){ return -1; }
   free(s);
   return 0;
-}
-
-char* pathminus(char *path, char *lastarg){
-  char *s = malloc((strlen(path) - strlen(lastarg) + 1) * sizeof(char));
-  memset(s,'\0',strlen(path) - strlen(lastarg) + 1);
-  strncat(s,path,strlen(path) - strlen(lastarg));
-  strcat(s,"\0");
-  return s;
 }
 
 char *tarpathconcat(char *arg){
