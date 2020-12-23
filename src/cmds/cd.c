@@ -1,15 +1,17 @@
 #include "cd.h"
 
 int cd(char *path){
-printf("path : %s\n");
   char *pathcpy = strdup(path);
   if(pathcpy[strlen(pathcpy) - 1] == '/') pathcpy[strlen(pathcpy) - 1] = '\0';
 
+  printf("ehooooooo la mouette\n");
   char *tar_name = getenv("TARNAME");
+  printf("%s\n",tar_name);
   char *tar_path = getenv("TARPATH");
   char *fp = get_full_path(get_full_path(pathcpy,tar_path),tar_name);
   special_path sp = special_path_maker(fp);
   free(fp);
+    printf("%s\n",path);
   /*
   now we have just to check if :
     - sp.tar_path contains ".tar" -> error (no tar in tar)

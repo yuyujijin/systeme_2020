@@ -54,7 +54,7 @@ char* pathminus(char *path, char *lastarg){
   memset(s,'\0',strlen(path) - strlen(lastarg) + 1);
   strncat(s,path,strlen(path) - strlen(lastarg));
   strcat(s,"\0");
-printf("path : %s\n s : %s\n", path, s);
+  
   return s;
 }
 

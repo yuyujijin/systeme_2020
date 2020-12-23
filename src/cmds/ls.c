@@ -31,24 +31,22 @@ int ls(int argc, char **argv){
         // puis on essaie d'y acceder, si ça fonctionne, c'est un dossier
         // sinon c'est un dossier
 	  
-	
-printf("EHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
         last_arg = getLastArg(argv[i]);
 
-printf("%s\n",last_arg);
+	
         // si le dernier argument != argv[i] (juste un fichier simple)
-        if(strcmp(argv[i],last_arg))
-	  {
-printf("%s",pathminus(argv[i],last_arg));
-printf("%d\n",cd(pathminus(argv[i],last_arg)));
+	if (strcmp(argv[i],last_arg)){
+	  printf("qjlqskdjbKJSDVNKQJSDBVLKSJVVMKSQJDMKSDJNKJDLKSDJB\n\n\n\n");
 	  if(cd(pathminus(argv[i],last_arg)) < 0)
-	    {
-	      errno = ENOTDIR;
-	      perror("ls");
-	      exit(EXIT_FAILURE);
-	    }
-	  }
-//printf("qjlqskdjbKJSDVNKQJSDBVLKSJVVMKSQJDMKSDJNKJDLKSDJB\n");
+	      {
+		errno = ENOTDIR;
+		perror("ls");
+		exit(EXIT_FAILURE);
+	      }
+	}
+
+	  
+	//printf("qjlqskdjbKJSDVNKQJSDBVLKSJVVMKSQJDMKSDJNKJDLKSDJB\n");
         // on vérifie si le dossier existe (dans les 2 contextes)
         if(strlen(getenv("TARNAME")))
 	  {
