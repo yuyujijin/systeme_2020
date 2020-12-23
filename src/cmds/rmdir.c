@@ -25,12 +25,12 @@ int rmdir_call(int argc,const char** argv)
 	    perror("rmdir");
 	    exit(EXIT_FAILURE);
 	  }
-
+	/*
 	//else
 	char* cmd="rmdir ";
 	
 	char* arg=malloc(PATH_MAX);
-	if(arg==NULL || cmd==NULL)
+	if(arg==NULL)
 	  {
 	    perror("rmdir");
 	    exit(EXIT_FAILURE);
@@ -39,8 +39,8 @@ int rmdir_call(int argc,const char** argv)
 	//copy of cmd in arg
 	//arg is the final entire command line
 	memcpy(arg,cmd,6);
-
-	//for each arg of argv
+	*/
+	//for each arg of argc
 	for (int i=1;i<argc;i++)
 	  {
 	    char *pathname = malloc(strlen (getenv ("TARPATH")) + strlen (getenv("TARNAME")) + 2);
@@ -50,18 +50,23 @@ int rmdir_call(int argc,const char** argv)
 		exit (EXIT_FAILURE);
 	      }
 
-	    memset(pathname, '\0', sizeof(strlen (getenv ("TARPATH")) + strlen (getenv("TARNAME")) + 2));
+	    memset(pathname, '\0', sizeof(strlen (getenv ("TARPATH"))
+					  + strlen (getenv("TARNAME"))
+					  + strlen (argv[i])
+					  + 2));
 	    strcat (pathname, getenv("TARNAME"));
 	    strcat (pathname, "/");
 	    strcat (pathname, getenv("TARPATH"));
+	    strcat (pathname, argv[i]);
 	    
 	    //if we're working in a regular path
 	    int tar_index = has_tar(argv[i]);
-	    if(!tar_index && (getenv("TARPATH")[0]=='\0'))
+	    if(!tar_index && (getenv("TARNAME")[0]=='\0'))
 	      {
 		switch(fork())
 		  {
 		  case -1:
+		    free(pathname);
 		    perror("rmdir");
 		    exit(EXIT_FAILURE);
 		  case 0 :
@@ -69,9 +74,11 @@ int rmdir_call(int argc,const char** argv)
 		    if(! last_is_tar(argv[i]) &&
 		       execlp("rmdir","rmdir",argv[i],NULL) < 0)
 		      {
+			free(pathname);
 			perror("rmdir");
 			exit(EXIT_FAILURE);
 		      }
+		    free(pathname);
 		    break;
 		  default :wait(NULL);break;
 		  }
@@ -80,11 +87,11 @@ int rmdir_call(int argc,const char** argv)
 	    else
 	      {
 		//if we're not in a tar
-		if (getenv("TARPATH")[0]=='\0') {
+		if (getenv("TARNAME")[0]=='\0') {
 		  if(rmdir_tar(argv[i],tar_index) < 0)
 		    {
 		      perror("A REFLECHIIIRRR");
-		    }
+		      }
 		}
 		//if we're in a tar
 		else {
@@ -120,6 +127,7 @@ int last_is_tar(const char* argv)
 
 int rmdir_tar(const char *argv, int start)
 {
+  //write (STDOUT_FILENO, argv, strlen(argv));
   //name is the name of the directory in the tar
   char* name=malloc(strlen(argv)-start+1);
   memset(name,'\0',strlen(argv)-start+1);
