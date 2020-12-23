@@ -98,7 +98,6 @@ int rmdir_call(int argc,const char** argv)
 		}
 		//if we're in a tar
 		else {
-		  printf("WE'RE IN A TAR\n");
 		  if(rmdir_tar(pathname,strlen(getenv("TARNAME"))+1) < 0)
 		    perror("A REFLECHIIIRRR");
 		}
@@ -209,5 +208,4 @@ int rmdir_tar(const char *argv, int start)
   free(name);
   free(path);
   return 0;
-  */
 }
