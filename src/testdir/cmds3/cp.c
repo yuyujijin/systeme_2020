@@ -47,7 +47,6 @@ int sameLevel(char *path){
 }
 
 int cp_r(char **argv){
-  printf("%s %s\n",argv[0],argv[1]);
   char *simplified_1 = getRealPath(argv[0]);
   char *simplified_2 = getRealPath(argv[1]);
   if(strstr(simplified_1,".tar") == NULL && strstr(simplified_2,".tar") == NULL)

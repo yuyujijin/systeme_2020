@@ -407,8 +407,8 @@ struct posix_header** posix_header_from_tarFile(char *tarname, char *path){
     }
 
     /* we get the size of the file for this header */
-    int filesize;
-    sscanf(tampon->size,"%d", &filesize);
+    unsigned int filesize;
+    sscanf(tampon->size,"%o", &filesize);
 
     /* and size of its blocs */
     int s = (filesize + 512 - 1)/512;
