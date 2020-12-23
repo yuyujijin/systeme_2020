@@ -30,8 +30,6 @@ void createDir(char **argv);
 
 int main(int argc, char**argv){
   if(argc < 3) return -1;
-  setenv("TARNAME","",1);
-  setenv("TARPATH","",1);
   if(strcmp(argv[1],"-r") == 0){
     /* pas assez d'arguments */
     if(argc == 4){ return cp_r(argv + 2); }else{ return -1; }
@@ -47,15 +45,14 @@ int sameLevel(char *path){
 }
 
 int cp_r(char **argv){
-  printf("%s %s\n",argv[0],argv[1]);
+  printf("%s\n",getenv("TARNAME"));
   char *simplified_1 = getRealPath(argv[0]);
   char *simplified_2 = getRealPath(argv[1]);
   if(strstr(simplified_1,".tar") == NULL && strstr(simplified_2,".tar") == NULL)
     execlp("ls","ls","-r",simplified_1,simplified_2,NULL);
-  char *last_arg_1 = getLastArg(simplified_1);
-  char *last_arg_2 = getLastArg(simplified_2);
   /* argv[0] n'est pas un dossier (= on ne peut pas y acceder ) */
   /* alors on tente juste de copier argv[0] à argv[1] */
+
   if(isDir(argv[0]) != 1) return cp_2args(argv);
   /* sinon on créer le dossier à l'adresse p2 */
   int wait, rpid;
