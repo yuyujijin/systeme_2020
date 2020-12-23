@@ -1,3 +1,4 @@
+
 #include "rmdir.h"
 
 int main(int argc, const char** argv)
@@ -50,9 +51,9 @@ int rmdir_call(int argc,const char** argv)
 	      }
 
 	    memset(pathname, '\0', sizeof(strlen (getenv ("TARPATH")) + strlen (getenv("TARNAME")) + 2));
-	    strcat (pathname, getenv("TARPATH"));
-	    strcat (pathname, "/");
 	    strcat (pathname, getenv("TARNAME"));
+	    strcat (pathname, "/");
+	    strcat (pathname, getenv("TARPATH"));
 	    
 	    //if we're working in a regular path
 	    int tar_index = has_tar(argv[i]);
@@ -75,17 +76,19 @@ int rmdir_call(int argc,const char** argv)
 		  default :wait(NULL);break;
 		  }
 	      }
-	    //if we're in a tar
+	    //if we're in the case we have to deal with tar
 	    else
 	      {
+		//if we're not in a tar
 		if (getenv("TARPATH")[0]=='\0') {
 		  if(rmdir_tar(argv[i],tar_index) < 0)
 		    {
 		      perror("A REFLECHIIIRRR");
 		    }
 		}
+		//if we're in a tar
 		else {
-		  if(rmdir_tar(pathname,strlen(getenv("TARPATH"))+1) < 0)
+		  if(rmdir_tar(pathname,strlen(getenv("TARNAME"))+1) < 0)
 		    perror("A REFLECHIIIRRR");
 		}
 	      }
@@ -100,7 +103,6 @@ int rmdir_call(int argc,const char** argv)
 
 int last_is_tar(const char* argv)
 {
-  printf("%s\n",argv);
   if (argv[strlen(argv) - 4] == '.'
       && argv[strlen(argv) - 3] == 't'
       && argv[strlen(argv) - 2] == 'a'
@@ -118,7 +120,6 @@ int last_is_tar(const char* argv)
 
 int rmdir_tar(const char *argv, int start)
 {
-  
   //name is the name of the directory in the tar
   char* name=malloc(strlen(argv)-start+1);
   memset(name,'\0',strlen(argv)-start+1);
