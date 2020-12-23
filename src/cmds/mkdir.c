@@ -38,7 +38,6 @@ int mkDir_call(int argc,char** argv){
       default : wait(&w); break;
     }
   }
-
   return 1;
 }
 
@@ -61,7 +60,7 @@ int addDirTar(char* path, char* name)
   memset(&hd,'\0',sizeof(struct posix_header));
 
   memcpy(hd.name, name, strlen(name));
-  sprintf(hd.mode,"0000664");
+  sprintf(hd.mode,"0000700");
 
   sprintf(hd.size, "%011o", 0);
 
@@ -85,3 +84,4 @@ int addDirTar(char* path, char* name)
 
   return 0;
 }
+
