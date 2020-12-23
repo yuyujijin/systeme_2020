@@ -500,11 +500,12 @@ char *substr(const char *src,int start,int end) {
   char *dest=NULL;
   if (end-start>0) {
     dest = malloc(end-start+1);
-    if(dest==NULL) perror("mkdir");
+    memset(dest,'\0',end-start+1);
+    if(dest==NULL) perror("");
     for(int i=0;i<end-start;i++){
       dest[i]=src[start+i];
     }
-    dest[end]='\0';
+    //dest[end-start]='\0';
   }
   return dest;
 }

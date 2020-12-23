@@ -43,7 +43,10 @@ int rmdir_call(int argc,const char** argv)
 	//for each arg of argc
 	for (int i=1;i<argc;i++)
 	  {
-	    char *pathname = malloc(strlen (getenv ("TARPATH")) + strlen (getenv("TARNAME")) + 2);
+	    char *pathname = malloc(strlen (getenv ("TARPATH"))
+				    + strlen (getenv("TARNAME"))
+				    + strlen (argv[i])
+				    + 2);
 	    if (pathname == NULL)
 	      {
 		perror ("rmdir");
@@ -95,6 +98,7 @@ int rmdir_call(int argc,const char** argv)
 		}
 		//if we're in a tar
 		else {
+		  printf("WE'RE IN A TAR\n");
 		  if(rmdir_tar(pathname,strlen(getenv("TARNAME"))+1) < 0)
 		    perror("A REFLECHIIIRRR");
 		}
@@ -127,12 +131,11 @@ int last_is_tar(const char* argv)
 
 int rmdir_tar(const char *argv, int start)
 {
-  //write (STDOUT_FILENO, argv, strlen(argv));
   //name is the name of the directory in the tar
   char* name=malloc(strlen(argv)-start+1);
   memset(name,'\0',strlen(argv)-start+1);
   memcpy(name,argv+start,strlen(argv)-start+1);
-
+  
   //needs to end by '/'
   if(argv[strlen(argv)-1]!='/')
     name[strlen(name)]='/';
@@ -206,4 +209,5 @@ int rmdir_tar(const char *argv, int start)
   free(name);
   free(path);
   return 0;
+  */
 }
