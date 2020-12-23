@@ -13,5 +13,6 @@ char* path_simplifier(char* path);
 char* pathminus(char *path, char *lastarg);
 char *getLastArg(char *path);
 int cdTo(char *path, char* last_arg);
+char *getRealPath(char *path);
 
 #endif

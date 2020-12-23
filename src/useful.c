@@ -60,3 +60,22 @@ char* pathminus(char *path, char *lastarg){
 char *getLastArg(char *path){
   return (strrchr(path,'/') != NULL)? strrchr(path,'/') + 1: path;
 }
+
+char *getRealPath(char *path){
+  char *pwd = getcwd(NULL,0);
+  char *tarname = getenv("TARNAME");
+  char *tarpath = getenv("TARPATH");
+  char *s = malloc(strlen(pwd) + strlen(tarname) + strlen(tarpath) + strlen(path) + 4);
+  if(s == NULL) return NULL;
+  memset(s,0,strlen(pwd) + strlen(tarname) + strlen(tarpath) + strlen(path) + 4);
+  strcat(s,pwd);
+  if(strlen(tarname) > 0) strcat(s,"/");
+  strcat(s,tarname);
+  if(strlen(tarpath) > 0) strcat(s,"/");
+  strcat(s,tarpath);
+  strcat(s,"/");
+  strcat(s,path);
+  char *simplified = path_simplifier(s);
+  free(s);
+  return simplified;
+}
