@@ -11,6 +11,8 @@ int main(int argc, const char** argv);
 
 int rm_call(int argc,const char** argv);
 
+int rm_tar_option(const char *argv, int start);
+
 int last_is_tar(const char* argv);
 
 int rm_tar(const char *argv, int tar_index);

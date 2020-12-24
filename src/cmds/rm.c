@@ -5,6 +5,18 @@ int main(int argc, const char** argv)
   return rm_call(argc,argv);
 }
 
+int option_r (const char * argv)
+{
+  if (argv[0] == '-')
+    {
+      if (argv[1] == 'r')
+	return 1;
+      else
+	return -1;
+    }
+  else return 0;
+}
+
 //call rm if we're in a regular path
 //else calls rm
 int rm_call(int argc,const char** argv)
@@ -17,6 +29,12 @@ int rm_call(int argc,const char** argv)
       exit(EXIT_FAILURE);
     case 0: //son
       {
+	int option = option_r (argv[1]);
+	if (option == -2)
+	  {
+	    perror("rm : wrong option");
+	    exit (EXIT_FAILURE);
+	  }
 	//if rm called without argument
 	if(argc==1)
 	  {
@@ -25,7 +43,10 @@ int rm_call(int argc,const char** argv)
 	    exit(EXIT_FAILURE);
 	  }
 	//for each arg of argc
-	for (int i=1;i<argc;i++)
+	int i = 1;
+	if (option == 1)
+	  i = 2;
+	for (;i<argc;i++)
 	  {	    
 	    //if we're working in a regular path
 	    int tar_index = has_tar(argv[i]);
@@ -69,18 +90,28 @@ int rm_call(int argc,const char** argv)
 		strcat (pathname, "/");
 		strcat (pathname, getenv("TARPATH"));
 		strcat (pathname, argv[i]);
-		
+	       
 		//if we're not in a tar
 		if (getenv("TARNAME")[0]=='\0') {
-		  if(rm_tar(argv[i],tar_index) < 0)
+		  switch (option)
 		    {
-		      perror("A REFLECHIIIRRR");
+		    case 0 :
+		      rm_tar(argv[i],tar_index); break;
+		    case 1 :
+		      rm_tar_option(argv[i],tar_index); break;
+		    default : break;
 		    }
 		}
 		//if we're in a tar
 		else {
-		  if(rm_tar(pathname,strlen(getenv("TARNAME"))+1) < 0)
-		    perror("A REFLECHIIIRRR");
+		   switch (option)
+		    {
+		    case 0 :
+		      rm_tar(pathname,strlen(getenv("TARNAME"))+1); break;
+		    case 1 :
+		      rm_tar_option(pathname,strlen(getenv("TARNAME"))+1); break;
+		    default : break;
+		    }
 		}
 	      }
 	  }
@@ -116,10 +147,6 @@ int rm_tar(const char *argv, int start)
   memset(name,'\0',strlen(argv)-start+1);
   memcpy(name,argv+start,strlen(argv)-start+1);
   
-  /*//needs to end by '/'
-  if(argv[strlen(argv)-1]!='/')
-  name[strlen(name)]='/';*/
-  
   //path is the path of the tarball
   char *path=malloc(strlen(argv)-start+1);
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
@@ -127,9 +154,22 @@ int rm_tar(const char *argv, int start)
   //check if the path exists in the tarball
   if(! file_exists_in_tar(path,name))
     {
-      errno=ENOENT;
-      perror("rm");
-      exit(EXIT_FAILURE);
+      //we first suppose it's a dir
+      //needs to end by '/'
+      if(argv[strlen(argv)-1]!='/')
+	name[strlen(name)]='/';
+      if(! file_exists_in_tar(path,name))
+	{
+	  errno=ENOENT;
+	  perror("rm");
+	  exit(EXIT_FAILURE);
+	}
+      else
+	{
+	  errno = EISDIR;
+	  perror ("rm : impossible de supprimer");
+	  exit (EXIT_FAILURE);
+	}
     }
 
   struct posix_header hd;
@@ -158,17 +198,6 @@ int rm_tar(const char *argv, int start)
 	  {
 	    if (hd.name[i] != name[i]) break;
 	  }
-
-	//if the path point a direcotry
-	if(hd.typeflag == '5')
-	  {
-	    free(name);
-	    free(path);
-	    close(fd);
-	    errno = EISDIR;
-	    perror ("rm : impossible de supprimer");
-	    exit (EXIT_FAILURE);
-	  }
 	
 	rmTar(path, name);
 	free(name);
@@ -190,4 +219,94 @@ int rm_tar(const char *argv, int start)
   errno = 17;
   perror ("rm");
   exit (EXIT_FAILURE);
+    
+}
+
+int rm_tar_option(const char *argv, int start)
+{
+  //name is the name of the file in the tar
+  char* name=malloc(strlen(argv)-start+1);
+  memset(name,'\0',strlen(argv)-start+1);
+  memcpy(name,argv+start,strlen(argv)-start+1);
+  
+  //path is the path of the tarball
+  char *path=malloc(strlen(argv)-start+1);
+  memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
+
+  //check if the path exists in the tarball
+  if(! file_exists_in_tar(path,name))
+    {
+      //we first suppose it's a dir
+      //needs to end by '/'
+      if(argv[strlen(argv)-1]!='/')
+	name[strlen(name)]='/';
+      if(! file_exists_in_tar(path,name))
+	{
+	  errno=ENOENT;
+	  perror("rm");
+	  exit(EXIT_FAILURE);
+	}
+    }
+
+  struct posix_header hd;
+  int fd;
+
+  fd = open(path,O_RDONLY);
+  //if tarball path doesn't exist
+  if(fd<0)
+    {
+      close(fd);
+      errno=17;
+      perror("rmdir");
+      exit(EXIT_FAILURE);
+    }
+
+  while(read(fd, &hd, sizeof(struct posix_header))){
+  
+    if(hd.name[0]=='\0')
+      {
+	break;
+      }
+
+    write(STDOUT_FILENO,hd.name,strlen(hd.name));
+    write(STDOUT_FILENO,"\n",1);
+
+    char str[12];
+    sprintf(str, "%d", strlen(hd.name));
+    char str1[12];
+    sprintf(str, "%d", strlen(name));
+
+    write(STDOUT_FILENO,"strlen hd.name : ",17);
+    write(STDOUT_FILENO,str,2);
+    write(STDOUT_FILENO,"\n",1);
+    write(STDOUT_FILENO,"strlen name : ",14);
+    write(STDOUT_FILENO,str1,2);
+    write(STDOUT_FILENO,"\n",1);
+	
+    if (strlen (hd.name) >= strlen (name))
+      {
+
+	for (unsigned int i = 0; i < strlen (name) ; i ++)
+	  {
+	    if (hd.name[i] != name[i]) break;
+
+	    if (i == strlen (name) - 1)
+	      {
+		rmTar(path, hd.name);
+	      }
+	  }
+      }
+
+    int filesize;
+    sscanf(hd.size,"%d", &filesize);
+    int s = (filesize + 512 - 1)/512;
+    struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
+    read(fd, temp, s * BLOCKSIZE);
+    free(temp);
+  } 
+  close (fd);
+  free(name);
+  free(path);
+  return 0;
+    
 }
