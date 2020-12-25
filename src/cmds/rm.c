@@ -260,49 +260,44 @@ int rm_tar_option(const char *argv, int start)
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
-  
-  write(1,name,strlen(name));
-  write(1,"\n",1);
-  write(1,path,strlen(path));
-  write(1,"\n\n",2);
-  while(read(fd, &hd, sizeof(struct posix_header))){
-  
-    if(hd.name[0]=='\0')
+
+  int condition = 1;
+  int supp = 0;
+  while(condition){
+    if (supp = 1)
       {
-	break;
+	if (read(fd, &hd, sizeof(struct posix_header)) == 0)
+	  condition = 0;
+      }
+    else
+      {
+	if (read(fd, &hd, 0) == 0)
+	  condition = 0;
       }
 
-    write(1,"ICI : ",6);
-    write(1,hd.name,strlen(hd.name));
-    write(1,"\n",1);
-
-    int supp = 0;
+    supp = 0;
     for (int i = 0; i < strlen (name); )
       {
-	write(1,hd.name,strlen(hd.name));
-	write(1,"\n",1);
-	if (hd.name[i] == name[i] && i == (strlen (name) - 1))
+       	if (hd.name[i] == name[i] && i == (strlen (name) - 1))
 	  {
 	    rmTar(path, hd.name);
 	    supp = 1;
 	  }
 	else if (hd.name[i] != name[i])
-	  i = strlen(name);
+	  {
+	    i = strlen(name);
+	    int filesize;
+	    sscanf(hd.size,"%d", &filesize);
+	    int s = (filesize + 512 - 1)/512;
+	    struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
+	    read(fd, temp, s * BLOCKSIZE);
+	    free(temp); 
+	  }
 	i++;
       }
-
-
-	int filesize;
-	sscanf(hd.size,"%d", &filesize);
-	int s = (filesize + 512 - 1)/512;
-	struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
-	read(fd, temp, s * BLOCKSIZE);
-	free(temp);
     
     
   }
-
-
   close (fd);
   free(name);
   free(path);
