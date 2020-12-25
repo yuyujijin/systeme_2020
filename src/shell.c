@@ -221,6 +221,9 @@ int execute_pipe_cmd(int argc, char **argv){
 
 int execute_redirection(int argc, char **argv){
   /* on créer un tableau pour contenir la seule commande a exec */
+  // On remarquera qu'on utilise les 'chemins spéciaux' (utilisé dans cd)
+  // ici, plutôt que cd directement, car la situation ne nous permet pas de
+  // changer de répertoire.
   char *argv_no_redirection[argc + 1];
   int j = 0;
 
@@ -228,13 +231,44 @@ int execute_redirection(int argc, char **argv){
   for (int i = 0; i < argc - 1; i++) {
     /* si c'est '<', on essaie de rediriger stdin dans argv[i+1] */
     if (!strcmp(argv[i], "<")) {
-        int stdin = open(argv[++i], O_RDONLY, 0644);
-        if(stdin < 0) {
-            perror("impossible d'ouvrir le fichier.\n");
-            return -1;
+      /* on récupère le 'vrai chemin', en créer un 'special path'
+      (chemin, nom du tar et path dans le tar séparé) */
+      char *p = getRealPath(argv[i+1]);
+      special_path sp = special_path_maker(p);
+      if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
+
+      /* si on est dans un tar */
+      if(strlen(sp.tar_name) > 0){
+        /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+        char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+        memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+        sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
+        /* puis on pipe rdTar dans l'entrée du pipe, et la sortie sur STDIN */
+          int pipefd[2];
+          pipe(pipefd);
+          switch(fork()){
+            case -1 : return -1;
+            case 0 :
+            close(pipefd[0]);
+            dup2(pipefd[1],STDOUT_FILENO);
+            rdTar(tarlocation,sp.tar_path);
+            exit(0);
+            default :
+            close(pipefd[1]);
+            dup2(pipefd[0],STDIN_FILENO);
+            break;
+          }
+        }else{
+          int stdin = open(argv[i+1], O_RDONLY, 0644);
+          if(stdin < 0) {
+              perror("impossible d'ouvrir le fichier.\n");
+              return -1;
+          }
+          dup2(stdin, STDIN_FILENO);
+          close(stdin);
         }
-        dup2(stdin, STDIN_FILENO);
-        close(stdin);
+        i++;
         continue;
     }
 
@@ -243,15 +277,47 @@ int execute_redirection(int argc, char **argv){
     si c'est '2>', on essaie de rediriger stderr dans argv[i+1]
     */
     if (!strcmp(argv[i],"2>") || !strcmp(argv[i], ">")) {
-        int stdout = open(argv[++i], O_WRONLY | O_CREAT, 0644);
+      /* on récupère le 'vrai chemin', en créer un 'special path'
+      (chemin, nom du tar et path dans le tar séparé) */
+      char *p = getRealPath(argv[i+1]);
+      special_path sp = special_path_maker(p);
+      if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
+
+      /* si on est dans un tar */
+      if(strlen(sp.tar_name) > 0){
+        /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+        char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+        memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+        sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
+        /* puis on pipe la sortie du pipe sur STDIN, et on pipe l'entrée sur stdout */
+        int pipefd[2];
+        pipe(pipefd);
+        switch(fork()){
+          case -1 : return -1;
+          case 0 :
+          close(pipefd[1]);
+          dup2(pipefd[0],STDIN_FILENO);
+          addTar(tarlocation,sp.tar_path,'0');
+          exit(0);
+          default :
+          close(pipefd[0]);
+          if(!strcmp(argv[i], ">")) dup2(pipefd[1],STDOUT_FILENO);
+          if(!strcmp(argv[i], "2>")) dup2(pipefd[1],STDOUT_FILENO);
+          break;
+        }
+      }else{
+        int stdout = open(argv[i+1], O_WRONLY | O_CREAT, 0644);
         if (stdout < 0) {
             perror("impossible de créer le fichier.\n");
             return -1;
         }
-        if(!strcmp(argv[i - 1], ">")) dup2(stdout, STDOUT_FILENO);
-        if(!strcmp(argv[i - 1], "2>")) dup2(stdout, STDERR_FILENO);
+        if(!strcmp(argv[i], ">")) dup2(stdout, STDOUT_FILENO);
+        if(!strcmp(argv[i], "2>")) dup2(stdout, STDERR_FILENO);
         close(stdout);
-        continue;
+      }
+      i++;
+      continue;
     }
 
     /* comme au dessus, mais en mode APPEND */

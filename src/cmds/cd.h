@@ -7,13 +7,10 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include "../useful.h"
 #include "../tar_manipulation.h"
 
-typedef struct special_path{
-  char *path;
-  char *tar_path;
-  char *tar_name;
-} special_path;
+
 
 /*
 path_simplifier will simplify the specified path (removing '..', '.' and '/' when possible)
