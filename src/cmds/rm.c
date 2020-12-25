@@ -232,10 +232,6 @@ int rm_tar_option(const char *argv, int start)
   //path is the path of the tarball
   char *path=malloc(strlen(argv)-start+1);
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
-
-  write (1,path,strlen(path));
-  write (1,name,strlen(name));
-  write (1,"\n", 1);
   
   int isdir = 0;
   //check if the path exists in the tarball
@@ -257,10 +253,7 @@ int rm_tar_option(const char *argv, int start)
     }
 
   if (! isdir)
-    {
-      write(1,"isnot\n",6);
       return rm_tar (argv, start);
-    }
   
   struct posix_header hd;
   int fd;
@@ -277,6 +270,21 @@ int rm_tar_option(const char *argv, int start)
       exit(EXIT_FAILURE);
     }
 
+  char *pathname = malloc(strlen (path)
+			  + strlen (name)
+			  + 1);
+  if (pathname == NULL)
+    {
+      perror ("rm");
+      exit (EXIT_FAILURE);
+    }
+
+  int len_path_name = strlen (path) + strlen (name);
+  memset(pathname, '\0', len_path_name + 1);
+		
+  strcat (pathname, path);
+  strcat (pathname, name);
+
   int condition = 1;
   
   while(condition){
@@ -289,11 +297,15 @@ int rm_tar_option(const char *argv, int start)
 	if (hd.name[i] == name[i] && i == (strlen (name) - 1)
 	    && strlen (hd.name) > strlen (name))
 	  {
-	    free (name);
+	    realloc (pathname, strlen(pathname) + strlen(hd.name));
+	    memset (pathname + len_path_name, '\0', strlen(hd.name));
+	    strcat (pathname, hd.name);
+
+	    write (1,pathname, strlen(pathname));
 	    if (hd.typeflag == '5')
-	      return rm_tar_option(argv, strlen(path) + strlen (hd.name) - 1);	  
+	      rm_tar_option(pathname, len_path_name);	  
 	    else
-	      return rm_tar (argv, strlen(path) + strlen (hd.name));
+	      rm_tar (pathname, len_path_name);
 	  }
 	else if (hd.name[i] != name[i])
 	  {
