@@ -32,7 +32,9 @@ int main(int argc, char**argv){
   if(argc < 3) return -1;
   if(strcmp(argv[1],"-r") == 0){
     /* pas assez d'arguments */
-    if(argc == 4){ return cp_r(argv + 2); }else{ return -1; }
+    if(argc == 4){ return cp_r(argv + 2); }else{
+      { perror("option non supportée.\n"); return -1; }
+    }
   }
   if(argc == 3) return cp_2args(argv + 1);
   return cp_nargs(argv + 1, argc - 1);
@@ -45,7 +47,6 @@ int sameLevel(char *path){
 }
 
 int cp_r(char **argv){
-  printf("%s\n",getenv("TARNAME"));
   char *simplified_1 = getRealPath(argv[0]);
   char *simplified_2 = getRealPath(argv[1]);
   if(strstr(simplified_1,".tar") == NULL && strstr(simplified_2,".tar") == NULL)
@@ -55,10 +56,12 @@ int cp_r(char **argv){
 
   if(isDir(argv[0]) != 1) return cp_2args(argv);
   /* sinon on créer le dossier à l'adresse p2 */
+  // TODO : VERIFICATION NON EXISTENCE DU DOSSIER
   int wait, rpid;
   rpid = fork();
   switch(rpid){
-    case -1 : return -1;
+    case -1 :
+    { perror("cp_r\n"); return -1; }
     case 0 : createDir(argv); exit(0);
     default : waitpid(rpid, &wait,0); break;
   }
@@ -66,7 +69,8 @@ int cp_r(char **argv){
   char *pwd = getcwd(NULL,0); char *tarname = getenv("TARNAME");
   char *tarpath = getenv("TARPATH");
 
-  if(cd(argv[0]) < 0) return -1;
+  if(cd(argv[0]) < 0)
+  { perror("fichier innaccessible.\n"); return -1; }
 
   // On parcourt maintenant tout les fichiers appartenant à ce dossier
   // Cas d'un tar
@@ -76,11 +80,13 @@ int cp_r(char **argv){
   if(strlen(getenv("TARNAME")) > 0){
     int fd = open(getenv("TARNAME"),O_RDONLY);
     char *path = getenv("TARPATH");
-    if(fd < 0) return -1;
+    if(fd < 0)
+    { perror("erreur lors de l'ouverture du tar.\n"); return -1; }
 
     while(1){
       struct posix_header tampon;
-      if(read(fd, &tampon, sizeof(struct posix_header)) < 0) return -1;
+      if(read(fd, &tampon, sizeof(struct posix_header)) < 0)
+      { perror("erreur lors de  la lecture du tar.\n"); return -1; }
 
       /* if its empty, we stop */
       if(isEmpty(&tampon)) break;
@@ -125,12 +131,13 @@ int cp_r(char **argv){
     int w;
 
     // et on rapelle recursivement sur chaque fichier
-    printf("%s %s\n",newargv[0],newargv[1]);
     int r = fork();
     switch(r){
-      case -1 : return -1;
+      case -1 : perror("cp_r\n"); return -1;
       case 0 : exit(cp_r(newargv));
-      default : waitpid(r,&w, 0); if(WEXITSTATUS(w) == 255) return -1; break;
+      default : waitpid(r,&w, 0);
+      if(WEXITSTATUS(w) == 255) return -1;
+      break;
     }
   }
   return 1;
@@ -153,7 +160,7 @@ int isDir(char *path){
   int w;
   int r = fork();
   switch(r){
-    case -1 : return -1;
+    case -1 : perror("isDir.\n"); return -1;
     case 0 : exit(cd(path));
     default : break;
   }
@@ -174,22 +181,22 @@ int cp_2args(char **argv){
   pipe(pipe_fd);
 
   switch(fork()){
-    case - 1 : return -1;
+    case - 1 : perror("cp\n"); return -1;
     case 0 :
     close(pipe_fd[0]);
     if(strcmp(argv[0],last_arg_1)){
-      if(cdTo(argv[0],last_arg_1) < 0) return -1;
+      if(cdTo(argv[0],last_arg_1) < 0)
+      { perror("chemin innaccessible.\n"); return -1; }
     }
+    // SI C'EST UN DOSSIER ET QUE L'OPTION '-R' N'EST PAS PRECISE, PROPOSER
     readFileWritePipe(last_arg_1, strlen(getenv("TARNAME")) > 0, pipe_fd[1]);
     exit(0);
     default :
     close(pipe_fd[1]);
     if(strcmp(argv[1],last_arg_2)){
-      if(cdTo(argv[1],last_arg_2) < 0) return -1;
+      if(cdTo(argv[1],last_arg_2) < 0)
+      { perror("chemin innaccessible.\n"); return -1; }
     }
-    // On vérifie si le dernier argument de simplified est un dossier
-    // auquel cas last_arg_2 prend la valeur de last_arg_1
-
     // si on "est" dans un tar
     if(strlen(getenv("TARNAME")) > 0){
       struct posix_header* h = getHeader(getenv("TARNAME"),getLastArg(simplified_2));
@@ -205,6 +212,8 @@ int cp_2args(char **argv){
         last_arg_2 = last_arg_1;
       }
     }
+    // Si le fichier existe déjà -> erreur
+    if(existsTP(last_arg_2)){ perror("le fichier existe déjà.\n"); return -1; }
     readPipeWriteFile(last_arg_2, strlen(getenv("TARNAME")) > 0, pipe_fd[0]);
     break;
   }
@@ -227,7 +236,7 @@ int cp_nargs(char **argv, int argc){
 
     int w;
     switch(fork()){
-      case - 1 : return -1;
+      case - 1 : perror("cp\n"); return -1;
       case 0 :
         if(cp_2args(cp) < 0){ perror("cp"); return -1; }
         exit(0);
@@ -258,10 +267,12 @@ int readPipeWriteFile(char *file_name, int tar, int pipe_fd){
   }else{
     /* normal reading in pipe and writing in file */
     int fd = open(file_name,O_WRONLY | O_CREAT, 0644);
-    if(fd < 0) return -1;
+    if(fd < 0)
+    { perror("erreur lors de l'ouverture du tar.\n"); return -1; }
     int size;
     while((size = read(pipe_fd,buf,BUF_SIZE)) > 0){
-      if(write(fd,buf,size) < 0) return -1;
+      if(write(fd,buf,size) < 0)
+      { perror("erreur lors de la lecture dans le tar.\n"); return -1; }
       memset(buf,'\0',BUF_SIZE);
     }
     close(fd); close(pipe_fd);
@@ -288,10 +299,12 @@ int readFileWritePipe(char *file_name, int tar, int pipe_fd){
   }else{
     /* normal reading in file and writing in pipe */
     int fd = open(file_name,O_RDONLY);
-    if(fd < 0) return -1;
+    if(fd < 0)
+    { perror("erreur lors de l'ouverture du tar.\n"); return -1; }
     int size;
     while((size = read(fd,buf,BUF_SIZE)) > 0){
-      if(write(pipe_fd,buf,size) < 0) return -1;
+      if(write(pipe_fd,buf,size) < 0)
+      { perror("erreur lors de l'ecriture dans le tar.\n"); return -1; }
       memset(buf,'\0',BUF_SIZE);
     }
     close(fd); close(pipe_fd);
