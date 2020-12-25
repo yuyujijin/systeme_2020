@@ -233,6 +233,11 @@ int rm_tar_option(const char *argv, int start)
   char *path=malloc(strlen(argv)-start+1);
   memcpy(path,argv,strlen(argv)-(strlen(argv)-start+1));
 
+  write (1,path,strlen(path));
+  write (1,name,strlen(name));
+  write (1,"\n", 1);
+  
+  int isdir = 0;
   //check if the path exists in the tarball
   if(! file_exists_in_tar(path,name))
     {
@@ -240,6 +245,9 @@ int rm_tar_option(const char *argv, int start)
       //needs to end by '/'
       if(argv[strlen(argv)-1]!='/')
 	name[strlen(name)]='/';
+
+      isdir = 1;
+
       if(! file_exists_in_tar(path,name))
 	{
 	  errno=ENOENT;
@@ -248,40 +256,44 @@ int rm_tar_option(const char *argv, int start)
 	}
     }
 
+  if (! isdir)
+    {
+      write(1,"isnot\n",6);
+      return rm_tar (argv, start);
+    }
+  
   struct posix_header hd;
   int fd;
 
   fd = open(path,O_RDONLY);
   //if tarball path doesn't exist
-  if(fd<0)
+  if(fd < 0)
     {
-      close(fd);
+      close (fd);
+      free(name);
+      free(path);
       errno=17;
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
 
   int condition = 1;
-  int supp = 0;
+  
   while(condition){
-    if (supp = 1)
-      {
-	if (read(fd, &hd, sizeof(struct posix_header)) == 0)
-	  condition = 0;
-      }
-    else
-      {
-	if (read(fd, &hd, 0) == 0)
-	  condition = 0;
-      }
-
-    supp = 0;
+    
+    if (! read(fd, &hd, sizeof(struct posix_header)))
+      condition = 0;	
+    
     for (int i = 0; i < strlen (name); )
       {
-       	if (hd.name[i] == name[i] && i == (strlen (name) - 1))
+	if (hd.name[i] == name[i] && i == (strlen (name) - 1)
+	    && strlen (hd.name) > strlen (name))
 	  {
-	    rmTar(path, hd.name);
-	    supp = 1;
+	    free (name);
+	    if (hd.typeflag == '5')
+	      return rm_tar_option(argv, strlen(path) + strlen (hd.name) - 1);	  
+	    else
+	      return rm_tar (argv, strlen(path) + strlen (hd.name));
 	  }
 	else if (hd.name[i] != name[i])
 	  {
@@ -293,10 +305,8 @@ int rm_tar_option(const char *argv, int start)
 	    read(fd, temp, s * BLOCKSIZE);
 	    free(temp); 
 	  }
-	i++;
+	i++;	 
       }
-    
-    
   }
   close (fd);
   free(name);
