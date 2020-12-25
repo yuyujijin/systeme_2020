@@ -181,7 +181,7 @@ int rm_tar(const char *argv, int start)
     {
       close(fd);
       errno=17;
-      perror("rmdir");
+      perror("rm");
       exit(EXIT_FAILURE);
     }
   
@@ -260,7 +260,11 @@ int rm_tar_option(const char *argv, int start)
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
-
+  
+  write(1,name,strlen(name));
+  write(1,"\n",1);
+  write(1,path,strlen(path));
+  write(1,"\n\n",2);
   while(read(fd, &hd, sizeof(struct posix_header))){
   
     if(hd.name[0]=='\0')
@@ -268,42 +272,37 @@ int rm_tar_option(const char *argv, int start)
 	break;
       }
 
-    write(STDOUT_FILENO,hd.name,strlen(hd.name));
-    write(STDOUT_FILENO,"\n",1);
+    write(1,"ICI : ",6);
+    write(1,hd.name,strlen(hd.name));
+    write(1,"\n",1);
 
-    char str[12];
-    sprintf(str, "%d", strlen(hd.name));
-    char str1[12];
-    sprintf(str, "%d", strlen(name));
-
-    write(STDOUT_FILENO,"strlen hd.name : ",17);
-    write(STDOUT_FILENO,str,2);
-    write(STDOUT_FILENO,"\n",1);
-    write(STDOUT_FILENO,"strlen name : ",14);
-    write(STDOUT_FILENO,str1,2);
-    write(STDOUT_FILENO,"\n",1);
-	
-    if (strlen (hd.name) >= strlen (name))
+    int supp = 0;
+    for (int i = 0; i < strlen (name); )
       {
-
-	for (unsigned int i = 0; i < strlen (name) ; i ++)
+	write(1,hd.name,strlen(hd.name));
+	write(1,"\n",1);
+	if (hd.name[i] == name[i] && i == (strlen (name) - 1))
 	  {
-	    if (hd.name[i] != name[i]) break;
-
-	    if (i == strlen (name) - 1)
-	      {
-		rmTar(path, hd.name);
-	      }
+	    rmTar(path, hd.name);
+	    supp = 1;
 	  }
+	else if (hd.name[i] != name[i])
+	  i = strlen(name);
+	i++;
       }
 
-    int filesize;
-    sscanf(hd.size,"%d", &filesize);
-    int s = (filesize + 512 - 1)/512;
-    struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
-    read(fd, temp, s * BLOCKSIZE);
-    free(temp);
-  } 
+
+	int filesize;
+	sscanf(hd.size,"%d", &filesize);
+	int s = (filesize + 512 - 1)/512;
+	struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
+	read(fd, temp, s * BLOCKSIZE);
+	free(temp);
+    
+    
+  }
+
+
   close (fd);
   free(name);
   free(path);
