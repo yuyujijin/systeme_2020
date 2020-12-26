@@ -1,0 +1,8 @@
+src/*
+!src/cmds
+!src/Makefile
+!src/*.c
+!src/*.h
+src/cmds/*
+!src/cmds/*.c
+!src/cmds/*.h
