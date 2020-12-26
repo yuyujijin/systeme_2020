@@ -75,7 +75,7 @@ int main(){
 
     /* cut it in words array with space char delimiter */
     int argc;
-    char **args = str_cut(line," ", &argc);
+    char **args = str_cut(line,"  ", &argc);
     if(args == NULL) return -1;
 
     free(line);

@@ -518,33 +518,6 @@ char* get_tar_from_full_path(const char * path){
   result[size]='\0';
   return result;
 }
-char * data_from_tarFile(const char *path){
-  char *tar_path=get_tar_from_full_path(path);
-  int fd=open(tar_path,O_RDONLY);
-  if(fd<0)return NULL;
-  while(1){
-    struct posix_header *tampon=malloc(sizeof(struct posix_header));
-    if(read(fd, tampon, sizeof(struct posix_header))<0)return NULL;
-
-    /* if its empty, we stop */
-    if(isEmpty(tampon)) break;
-    int filesize;
-    sscanf(tampon->size,"%d", &filesize);
-    if(strcmp(tampon->name,strstr(path,".tar/")+5)
-       ==0&&tampon->typeflag==48){
-      char *data=malloc(filesize+1);
-      read(fd,data,filesize);
-      data[filesize]='\0';
-      return data;
-    }
-    /* and size of its blocs */
-    int s = (filesize + 512 - 1)/512;
-    /* we read them if order to "ignore them" (we SHOULD use seek here) */
-    char temp[s * BLOCKSIZE];
-    read(fd, temp, s * BLOCKSIZE);
-  }
-  return NULL;
-}
 
 struct posix_header** posix_header_from_tarFile(char *tarname, char *path){
   int fd = open(tarname,O_RDONLY);

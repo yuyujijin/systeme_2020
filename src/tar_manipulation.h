@@ -67,13 +67,6 @@ struct posix_header** posix_header_from_tarFile(char *tarname, char *path);
 */
 int is_source(const char* path);
 
-/*
-  Return the data of the file named path,
-  If path="a.tar/c" then return the data inside c,
-  If the file doesn't exist or path leads to a folder returns NULL
-*/
-char * data_from_tarFile(const char *path);
-
 int exists(char* tarname, char* filename);
 int existsTP(char *filename);
 
