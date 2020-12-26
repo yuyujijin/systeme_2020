@@ -326,7 +326,7 @@ int execute_redirection(int argc, char **argv){
           default :
           close(pipefd[0]);
           if(!strcmp(argv[i], ">")) dup2(pipefd[1],STDOUT_FILENO);
-          if(!strcmp(argv[i], "2>")) dup2(pipefd[1],STDOUT_FILENO);
+          if(!strcmp(argv[i], "2>")) dup2(pipefd[1],STDERR_FILENO);
           break;
         }
       }else{
@@ -373,13 +373,13 @@ int execute_redirection(int argc, char **argv){
           case -1 : return -1;
           case 0 :
           close(pipefd[1]);
-          // On supprime le fichier pour simuler l'effet du O_TRUNCAT
+          dup2(pipefd[0],STDIN_FILENO);
           appendTar(tarlocation,sp.tar_path);
           exit(0);
           default :
           close(pipefd[0]);
-          if(!strcmp(argv[i], ">")) dup2(pipefd[1],STDOUT_FILENO);
-          if(!strcmp(argv[i], "2>")) dup2(pipefd[1],STDOUT_FILENO);
+          if(!strcmp(argv[i], ">>")) dup2(pipefd[1],STDOUT_FILENO);
+          if(!strcmp(argv[i], "2>>")) dup2(pipefd[1],STDERR_FILENO);
           break;
         }
       }else{
@@ -402,6 +402,7 @@ int execute_redirection(int argc, char **argv){
 
         close(concat);
       }
+      i++;
       continue;
     }
 
