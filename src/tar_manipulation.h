@@ -34,6 +34,8 @@ int rmTar(const char *path, const char *name);
 
 int isEmpty(struct posix_header*);
 
+int appendTar(char *path, char *name);
+
 /*
   Verify if any of the path in args is a tar, if it is, it adds its position in args to an int[]
   We return this int[] so that we can use it later

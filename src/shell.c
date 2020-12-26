@@ -244,6 +244,18 @@ int execute_redirection(int argc, char **argv){
         memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
         sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
 
+        struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
+
+        if(ph == NULL){
+          perror("impossible d'ouvrir le fichier.\n");
+          return -1;
+        }
+
+        if(ph->typeflag == '5'){
+          perror("est un dossier.");
+          return -1;
+        }
+
         /* puis on pipe rdTar dans l'entrée du pipe, et la sortie sur STDIN */
           int pipefd[2];
           pipe(pipefd);
@@ -260,6 +272,15 @@ int execute_redirection(int argc, char **argv){
             break;
           }
         }else{
+          // On récupère les stats
+          struct stat statbuf;
+          // Si il existe, et que c'est un dossier -> erreur
+          if(stat(argv[i+1],&statbuf) != -1){
+            if(S_ISDIR(statbuf.st_mode)){
+              perror("est un dossier.");
+              return -1;
+            }
+          }
           int stdin = open(argv[i+1], O_RDONLY, 0644);
           if(stdin < 0) {
               perror("impossible d'ouvrir le fichier.\n");
@@ -297,6 +318,8 @@ int execute_redirection(int argc, char **argv){
           case -1 : return -1;
           case 0 :
           close(pipefd[1]);
+          // On supprime le fichier pour simuler l'effet du O_TRUNCAT
+          rmTar(tarlocation,sp.tar_path);
           dup2(pipefd[0],STDIN_FILENO);
           addTar(tarlocation,sp.tar_path,'0');
           exit(0);
@@ -307,7 +330,16 @@ int execute_redirection(int argc, char **argv){
           break;
         }
       }else{
-        int stdout = open(argv[i+1], O_WRONLY | O_CREAT, 0644);
+        // On récupère les stats
+        struct stat statbuf;
+        // Si il existe, et que c'est un dossier -> erreur
+        if(stat(argv[i+1],&statbuf) != -1){
+          if(S_ISDIR(statbuf.st_mode)){
+            perror("est un dossier.");
+            return -1;
+          }
+        }
+        int stdout = open(argv[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (stdout < 0) {
             perror("impossible de créer le fichier.\n");
             return -1;
@@ -322,6 +354,44 @@ int execute_redirection(int argc, char **argv){
 
     /* comme au dessus, mais en mode APPEND */
     if (!strcmp(argv[i],"2>>") || !strcmp(argv[i], ">>")) {
+      /* on récupère le 'vrai chemin', en créer un 'special path'
+      (chemin, nom du tar et path dans le tar séparé) */
+      char *p = getRealPath(argv[i+1]);
+      special_path sp = special_path_maker(p);
+      if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
+
+      /* si on est dans un tar */
+      if(strlen(sp.tar_name) > 0){
+        /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+        char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+        memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+        sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
+        int pipefd[2];
+        pipe(pipefd);
+        switch(fork()){
+          case -1 : return -1;
+          case 0 :
+          close(pipefd[1]);
+          // On supprime le fichier pour simuler l'effet du O_TRUNCAT
+          appendTar(tarlocation,sp.tar_path);
+          exit(0);
+          default :
+          close(pipefd[0]);
+          if(!strcmp(argv[i], ">")) dup2(pipefd[1],STDOUT_FILENO);
+          if(!strcmp(argv[i], "2>")) dup2(pipefd[1],STDOUT_FILENO);
+          break;
+        }
+      }else{
+        // On récupère les stats
+        struct stat statbuf;
+        // Si il existe, et que c'est un dossier -> erreur
+        if(stat(argv[i+1],&statbuf) != -1){
+          if(S_ISDIR(statbuf.st_mode)){
+            perror("est un dossier.");
+            return -1;
+          }
+        }
         int concat = open(argv[++i], O_CREAT | O_RDWR | O_APPEND, 0644);
         if (concat < 0) {
             perror("impossible de concatener au fichier.\n");
@@ -331,7 +401,8 @@ int execute_redirection(int argc, char **argv){
         if(!strcmp(argv[i - 1],"2>>")) dup2(concat, STDERR_FILENO);
 
         close(concat);
-        continue;
+      }
+      continue;
     }
 
     /* sortie erreur dans la sortie standard */

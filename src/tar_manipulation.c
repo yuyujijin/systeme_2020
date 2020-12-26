@@ -26,15 +26,9 @@ int addTar(const char *path, const char *name, char typeflag){
     /* read everything from STDIN and write in the tarball */
     while((size = read(STDIN_FILENO, buffer, BLOCKSIZE)) > 0){
       bufsize += size;
-      if(write(fd,buffer,size) < 0){ perror("erreur lors de l'écriture dans le tar \n"); return -1; }
+      if(write(fd,buffer,BLOCKSIZE) < 0){ perror("erreur lors de l'écriture dans le tar \n"); return -1; }
+      memset(buffer,0,BLOCKSIZE);
     }
-    /* if the last red block is < BLOCKSIZE then we have to fill with '\0' */
-    if(size < BLOCKSIZE){
-      char empty[BLOCKSIZE - size];
-      memset(empty,'\0',BLOCKSIZE - size);
-      if(write(fd,empty,BLOCKSIZE - size) < 0){perror("erreur lors de l'écriture dans le tar \n"); return -1; }
-    }
-
     /* We then put the two empty blocks at the end of the tar */
     char emptybuf[512];
     memset(emptybuf,0,512);
@@ -63,6 +57,141 @@ int addTar(const char *path, const char *name, char typeflag){
   if(write(fd, &hd, sizeof(struct posix_header)) < 0){perror("erreur lors de l'écriture dans le tar \n"); return -1; }
 
   close(fd);
+
+  return 1;
+}
+
+int appendTar(char *path, char *name){
+  // On réecrit le fichier à la fin
+  // puis on supprimer 'l'original' et on lit depuis STDIN et écrit dans le fichier
+  // et on met à jour la taille du header à la fin
+  struct posix_header tampon;
+  int fd, s;
+  unsigned int filesize;
+
+  /* if the file doesnt exist (or cant be opened), then its not a tar */
+  fd = open(path,O_RDWR);
+  if(fd < 0){ perror("tar introuvable.\n"); return -1; }
+
+  while(1){
+    /* create the buffer to read the header */
+    if(read(fd, &tampon, sizeof(struct posix_header)) <= 0)
+    { perror("erreur lors de la lecture du tar.\n"); return -1; }
+
+    /* if its empty, we then just addTar */
+    if(isEmpty(&tampon)){ close(fd); return addTar(path,name,'0'); }
+
+    /* we get the size of the file for this header */
+    sscanf(tampon.size,"%o", &filesize);
+
+    /* and size of its blocs */
+    s = (filesize + 512 - 1)/512;
+
+    if(strcmp(tampon.name,name) == 0) break;
+
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+  }
+
+
+  int pipefd[2];
+  pipe(pipefd);
+
+  char buf[BLOCKSIZE];
+  memset(buf,0,BLOCKSIZE);
+
+  switch(fork()){
+    case -1 : return -1;
+    case 0 :
+    close(pipefd[1]);
+    close(fd);
+
+    fd = open(path,O_RDWR);
+    if(fd < 0){ perror("tar introuvable.\n"); return -1; }
+
+    lseek(fd, offsetTar(path), SEEK_SET);
+    if(write(fd,&tampon,sizeof(struct posix_header)) < 0)
+    { perror("erreur lors de l'écriture dans le tar."); return -1; }
+
+    while(read(pipefd[0], buf, BLOCKSIZE) > 0){
+      if(write(fd,buf,BLOCKSIZE) < 0)
+      { perror("erreur lors de l'écriture dans le tar."); return -1; }
+      memset(buf,0,BLOCKSIZE);
+    }
+    close(fd);
+    close(pipefd[0]);
+    exit(0);
+    default :
+    close(pipefd[0]);
+    for(int i = 0; i < s; i++){
+      memset(buf,0,BLOCKSIZE);
+      if(read(fd,buf,BLOCKSIZE) < 0)
+      { perror("erreur lors de la lecture dans le tar."); return -1; }
+      if(write(pipefd[1],buf,BLOCKSIZE) < 0)
+      { perror("erreur lors de l'écriture dans le tar."); return -1; }
+    }
+    close(fd);
+    close(pipefd[1]);
+    break;
+  }
+
+  // Puis on supprimer le fichier
+  if(rmTar(path,name) < 0)
+  { perror("appendTar."); return -1; }
+
+  char buffer[BLOCKSIZE];
+  unsigned int bufsize = 0;
+  /* Put it at '\0' on every bytes, in case we didnt read 512 bytes */
+  memset(buffer,'\0',BLOCKSIZE);
+  /* if we arent writing an empty file */
+  size_t size;
+  /* read everything from STDIN and write in the tarball */
+  while((size = read(STDIN_FILENO, buffer, BLOCKSIZE)) > 0){
+    bufsize += size;
+    if(write(fd,buffer,BLOCKSIZE) < 0){ perror("erreur lors de l'écriture dans le tar \n"); return -1; }
+    memset(buffer,0,BLOCKSIZE);
+  }
+
+  /* We then put the two empty blocks at the end of the tar */
+  char emptybuf[512];
+  memset(emptybuf,0,512);
+  for(int i = 0; i < 2; i++){ if(write(fd, emptybuf,512) < 0){perror("erreur lors de l'écriture dans le tar \n"); return -1; } }
+
+  // Puis on modifie la taille du fichier (son filesize)
+  lseek(fd,0,SEEK_SET);
+
+  while(1){
+    /* create the buffer to read the header */
+    if(read(fd, &tampon, sizeof(struct posix_header)) <= 0)
+    { perror("erreur lors de la lecture du tar.\n"); return -1; }
+
+    /* if its empty, we stop */
+    if(isEmpty(&tampon))
+    { perror("Fichier introuvable.\n"); return -1; }
+
+    /* we get the size of the file for this header */
+    sscanf(tampon.size,"%o", &filesize);
+
+    /* and size of its blocs */
+    s = (filesize + 512 - 1)/512;
+
+    if(strcmp(tampon.name,name) == 0) break;
+
+    /* we read them if order to "ignore them" (we SHOULD use seek here) */
+    char temp[s * BLOCKSIZE];
+    read(fd, temp, s * BLOCKSIZE);
+  }
+
+  // On retourne juste devant le header, pour l'écraser
+  lseek(fd, - BLOCKSIZE, SEEK_CUR);
+
+  sprintf(tampon.size, "%011o", bufsize + filesize);
+  set_checksum(&tampon);
+  if(check_checksum(&tampon) < 0) return -1;
+
+  if(write(fd,&tampon,BLOCKSIZE) < 0)
+  { perror("erreur lors de l'ecriture dans le tar.\n"); return -1; }
 
   return 1;
 }
