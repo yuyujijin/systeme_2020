@@ -42,7 +42,7 @@ int rm_call(int argc,const char** argv)
 	    perror("rm");
 	    exit(EXIT_FAILURE);
 	  }
-	//for each arg of argc
+	//for each arg of argv
 	int i = 1;
 	if (option == 1)
 	  i = 2;
@@ -71,6 +71,8 @@ int rm_call(int argc,const char** argv)
 	    //if we're in the case we have to deal with tar
 	    else
 	      {
+		//we create pathname, under the form
+		// "tarname/tarpath/argv[i]"
 		char *pathname = malloc(strlen (getenv ("TARPATH"))
 					+ strlen (getenv("TARNAME"))
 					+ strlen (argv[i])
@@ -269,8 +271,9 @@ int rm_tar_option(const char *argv, int start)
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
-  
-  char* rm_adress[8];
+
+  //we put in rm_adress all the & we have to delete
+  char* rm_adress[512];
 
   int index = 0;
   
