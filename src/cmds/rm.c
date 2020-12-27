@@ -270,7 +270,7 @@ int rm_tar_option(const char *argv, int start)
       exit(EXIT_FAILURE);
     }
   
-  char* rm_adress[512];
+  char* rm_adress[8];
 
   int index = 0;
   
@@ -296,28 +296,27 @@ int rm_tar_option(const char *argv, int start)
       }
   }
 
-  if (index >= 2)
+
+  if (index <= 2)
     rmTar(path, name);
   else
     {
-      for(int i = 0; i < index; i++){
-	char argv0[strlen (path) + 1 + strlen(rm_adress[i]) + 1];
-	memset(argv0,0,+ strlen(rm_adress[i]) + 1);
-	sprintf(argv0,"%s/%s",path, rm_adress[i]);
+      for(int i = 0; i < index; i++)
+	{
+	  char argv0[strlen (path) + 1 + strlen(rm_adress[i]) + 1];
+	  memset(argv0,0,+ strlen(rm_adress[i]) + 1);
+	  sprintf(argv0,path,"%s/%s",rm_adress[i]);
 
-	write (1,argv0,strlen(argv0));
-	write(1,"\n",1);
-	int w;
-
-	// et on rapelle recursivement sur chaque fichier
-	//printf("%s %s\n",newargv[0],newargv[1]);
-	int r = fork();
-	switch(r){
-	case -1 : return -1;
-	case 0 : rmTar(path, rm_adress[i]);
-	default : waitpid(r,&w, 0); if(WEXITSTATUS(w) == 255) return -1; break;
+	  int w;
+	  // et on rapelle recursivement sur chaque fichier
+	  //printf("%s %s\n",newargv[0],newargv[1]);
+	  int r = fork();
+	  switch(r){
+	  case -1 : return -1;
+	  case 0 : exit(rmTar(path, rm_adress[i]));
+	  default : waitpid(r,&w, 0); if(WEXITSTATUS(w) == 255) return -1; break;
+	  }
 	}
-      }
     }
 
   close (fd);
