@@ -269,43 +269,18 @@ int rm_tar_option(const char *argv, int start)
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
-
-  char *pathname = malloc(strlen (path)
-			  + strlen (name)
-			  + 1);
-  if (pathname == NULL)
-    {
-      perror ("rm");
-      exit (EXIT_FAILURE);
-    }
-
-  int len_path_name = strlen (path) + strlen (name);
-  memset(pathname, '\0', len_path_name + 1);
-		
-  strcat (pathname, path);
-  strcat (pathname, name);
-
-  int condition = 1;
   
-  while(condition){
-    
-    if (! read(fd, &hd, sizeof(struct posix_header)))
-      condition = 0;	
-    
-    for (int i = 0; i < strlen (name); )
-      {
-	if (hd.name[i] == name[i] && i == (strlen (name) - 1)
-	    && strlen (hd.name) > strlen (name))
-	  {
-	    realloc (pathname, strlen(pathname) + strlen(hd.name));
-	    memset (pathname + len_path_name, '\0', strlen(hd.name));
-	    strcat (pathname, hd.name);
+  char* rm_adress[512];
 
-	    write (1,pathname, strlen(pathname));
-	    if (hd.typeflag == '5')
-	      rm_tar_option(pathname, len_path_name);	  
-	    else
-	      rm_tar (pathname, len_path_name);
+  int index = 0;
+  
+  while(read(fd, &hd, sizeof(struct posix_header))){	
+    
+    for (unsigned i = 0; i < strlen (name); )
+      {
+	if (hd.name[i] == name[i] && i == (strlen (name) - 1))
+	  {
+	    rm_adress[index ++] = strdup(hd.name);
 	  }
 	else if (hd.name[i] != name[i])
 	  {
@@ -320,6 +295,31 @@ int rm_tar_option(const char *argv, int start)
 	i++;	 
       }
   }
+
+  if (index >= 2)
+    rmTar(path, name);
+  else
+    {
+      for(int i = 0; i < index; i++){
+	char argv0[strlen (path) + 1 + strlen(rm_adress[i]) + 1];
+	memset(argv0,0,+ strlen(rm_adress[i]) + 1);
+	sprintf(argv0,"%s/%s",path, rm_adress[i]);
+
+	write (1,argv0,strlen(argv0));
+	write(1,"\n",1);
+	int w;
+
+	// et on rapelle recursivement sur chaque fichier
+	//printf("%s %s\n",newargv[0],newargv[1]);
+	int r = fork();
+	switch(r){
+	case -1 : return -1;
+	case 0 : rmTar(path, rm_adress[i]);
+	default : waitpid(r,&w, 0); if(WEXITSTATUS(w) == 255) return -1; break;
+	}
+      }
+    }
+
   close (fd);
   free(name);
   free(path);
