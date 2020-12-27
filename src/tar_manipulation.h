@@ -34,6 +34,8 @@ int rmTar(const char *path, const char *name);
 
 int isEmpty(struct posix_header*);
 
+int appendTar(char *path, char *name);
+
 /*
   Verify if any of the path in args is a tar, if it is, it adds its position in args to an int[]
   We return this int[] so that we can use it later
@@ -64,13 +66,6 @@ struct posix_header** posix_header_from_tarFile(char *tarname, char *path);
   A methods that simply return 1 if path="a.tar" or path="a.tar/" and return 0 otherwise
 */
 int is_source(const char* path);
-
-/*
-  Return the data of the file named path,
-  If path="a.tar/c" then return the data inside c,
-  If the file doesn't exist or path leads to a folder returns NULL
-*/
-char * data_from_tarFile(const char *path);
 
 int exists(char* tarname, char* filename);
 int existsTP(char *filename);

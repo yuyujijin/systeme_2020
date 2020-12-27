@@ -9,6 +9,12 @@
 #include <stdlib.h>
 #include "cmds/cd.h"
 
+typedef struct special_path{
+  char *path;
+  char *tar_path;
+  char *tar_name;
+} special_path;
+
 char* path_simplifier(char* path);
 char* pathminus(char *path, char *lastarg);
 char *getLastArg(char *path);
