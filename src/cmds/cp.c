@@ -47,6 +47,10 @@ int sameLevel(char *path){
 }
 
 int cp_r(char **argv){
+  write(STDIN_FILENO,argv[0],strlen(argv[0]));
+  write(STDIN_FILENO," ",1);
+  write(STDIN_FILENO,argv[1],strlen(argv[1]));
+  write(STDIN_FILENO,"\n",1);
   char *simplified_1 = getRealPath(argv[0]);
   char *simplified_2 = getRealPath(argv[1]);
   if(strstr(simplified_1,".tar") == NULL && strstr(simplified_2,".tar") == NULL)
@@ -119,13 +123,18 @@ int cp_r(char **argv){
   }
   chdir(pwd); setenv("TARNAME",tarname,1); setenv("TARPATH",tarpath,1);
   for(int i = 0; i < index; i++){
+    printf("filenames : %s\n",filenames[i]);
     char argv0[strlen(argv[0]) + 1 + strlen(filenames[i]) + 1];
     memset(argv0,0,strlen(argv[0]) + 1 + strlen(filenames[i]) + 1);
-    sprintf(argv0,"%s/%s",argv[0],filenames[i]);
+    strcat(argv0,argv[0]);
+    if(argv[0][strlen(argv[0]) - 1] != '/') strcat(argv0,"/");
+    strcat(argv0,filenames[i]);
     // On concatene tout
     char argv1[strlen(argv[1]) + 1 + strlen(filenames[i]) + 1];
     memset(argv1,0,strlen(argv[1]) + 1 + strlen(filenames[i]) + 1);
-    sprintf(argv1,"%s/%s",argv[1],filenames[i]);
+    strcat(argv1,argv[1]);
+    if(argv[1][strlen(argv[1]) - 1] != '/') strcat(argv1,"/");
+    strcat(argv1,filenames[i]);
 
     char *newargv[2] = {argv0,argv1};
     int w;
@@ -204,6 +213,9 @@ int cp_2args(char **argv){
         cd(last_arg_2);
         last_arg_2 = last_arg_1;
       }
+
+      // Si le fichier existe déjà -> erreur
+      if(existsTP(last_arg_2)){ perror("le fichier existe déjà.\n"); return -1; }
     }else{
     // sinon
       DIR *dir = opendir(getLastArg(simplified_2));
@@ -212,8 +224,6 @@ int cp_2args(char **argv){
         last_arg_2 = last_arg_1;
       }
     }
-    // Si le fichier existe déjà -> erreur
-    if(existsTP(last_arg_2)){ perror("le fichier existe déjà.\n"); return -1; }
     readPipeWriteFile(last_arg_2, strlen(getenv("TARNAME")) > 0, pipe_fd[0]);
     break;
   }
@@ -289,8 +299,8 @@ int readFileWritePipe(char *file_name, int tar, int pipe_fd){
     struct posix_header* hd = getHeader(getenv("TARNAME"),tpcc);
     if(hd == NULL || hd->typeflag == '5'){ errno = EEXIST; perror("cp"); return -1; }
 
-    int old_stdin = dup(STDIN_FILENO);
-    dup2(pipe_fd, STDIN_FILENO);
+    int old_stdin = dup(STDOUT_FILENO);
+    dup2(pipe_fd, STDOUT_FILENO);
 
     if(rdTar(getenv("TARNAME"),tpcc) < 0){ perror("cp"); return -1; }
 
