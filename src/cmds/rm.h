@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 //#include "../tar.h"
 #include "../tar_manipulation.h"
+#include "../useful.h"
 
 int main(int argc, const char** argv);
 
