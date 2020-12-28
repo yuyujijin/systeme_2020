@@ -158,14 +158,14 @@ char** str_cut(char *input_str, char *tokens, int* argc){
 int execute_pipe_cmd(int argc, char **argv){
   // On compte le nombre de symbole pipe
   int pipelines = 1;
-  for(int i = 0; argv[i] != NULL; i++) if(!strcmp(trim(argv[i]),"|")) pipelines++;
+  for(int i = 0; argv[i] != NULL; i++) if(!strcmp(argv[i],"|")) pipelines++;
 
   // Puis on créer un tableau de tableau de string
   // dans lequel on insert les 'lignes' (sans les pipes)
   char *pipelines_args[pipelines][argc + 1];
   int c = 0, l = 0;
   for(int j = 0; argv[j] != NULL; j++){
-    if(!strcmp(trim(argv[j]),"|")){
+    if(!strcmp(argv[j],"|")){
       pipelines_args[l][c] = NULL;
       c = 0; l++; continue;
     }
@@ -419,7 +419,6 @@ int execute_redirection(int argc, char **argv){
        argv_no_redirection[j++] = argv[i];
      }
   }
-
 
   /* dernier argument a null (pour exec) */
   argv_no_redirection[j] = NULL;
