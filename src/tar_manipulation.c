@@ -703,5 +703,26 @@ int is_empty (char *tarpath, char *name)
     free(temp);
   }
   close (fd);
-  return (count == 1);
+  return 1;
+}
+
+//return 1 is the par path/ is empty
+//else 0
+int is_empty_tar (char* path)
+{
+  int fd = open(path, O_RDONLY);
+  struct posix_header hd;
+
+  if(fd<0)
+    {
+      close (fd);
+      return -1;
+    }
+
+  int ret = 1;
+  if (read(fd, &hd, sizeof(struct posix_header)))
+    ret = 0;
+  close(fd);
+  return ret;
+
 }

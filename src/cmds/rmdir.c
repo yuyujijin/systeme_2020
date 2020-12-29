@@ -28,13 +28,13 @@ int rmdir_call(int argc,char** argv)
       //for each arg of argc
       for (int i=1;i<argc;i++)
 	{
-	  char* path = malloc (strlen(getRealPath(argv[i])) + 1);
+	  char* path = malloc (strlen(getRealPath(argv[i])) + 2);
 	  if (path == NULL)
 	    {
 	      perror("rmdir");
 	      exit (EXIT_FAILURE);
 	    }
-
+	  strcat ( path, "/");
 	  strcat ( path, getRealPath(argv[i]) );
 	  strcat ( path, "\0");	  
 	  
@@ -51,26 +51,25 @@ int rmdir_call(int argc,char** argv)
 		  //if the path point a tar, delete the tar
 		  // it can be a tar or a dir called xx.t
 		  if(last_is_tar(path))
-		    execlp("rm", "rm", "-r", argv[i], NULL);
+		    {
+		      if (is_empty_tar (path))
+			execlp("rm", "rm", "-r", path, NULL);
+		      else
+			{
+			  errno = ENOTEMPTY;
+			  perror ("rmdir");
+			  exit (EXIT_FAILURE);
+			}
+		    }
 		  break;
 		default :wait(NULL);break;
 		}
 	    }
 	  //if we're in the case we have to deal with tar
 	  else
-	    {
-	      //if we're not in a tar
-	      if (getenv("TARNAME")[0]=='\0') 
-		rmdir_tar(path);
-		
-	      //if we're in a tar
-	      else 
-		rmdir_tar(path);
-		
-	    }
+	    rmdir_tar(path);
 	  free (path);
 	}
-
       exit(EXIT_SUCCESS);	
     default: wait(NULL);break;
     }
@@ -91,17 +90,18 @@ int last_is_tar(char* argv)
 
 int rmdir_tar(char *argv)
 {
-  write (1, argv, strlen (argv));
-  write (1, "\n", 1);
+  //write (1, argv, strlen (argv));
+  //write (1, "\n", 1);
   special_path sp = special_path_maker (argv);
 
-  char path[strlen(sp.path) + 2];
-  memset(path,0,strlen(sp.path) + 2);
-  sprintf(path,"/%s",sp.path);
-  path[strlen(path) - 1] = '\0';
+  //write (1, sp.tar_name, strlen(sp.tar_name));
+  //write (1,"\n",1);
+  char path[strlen(sp.path) + strlen (sp.tar_name) + 2];
+  memset (path, 0, strlen(sp.path) + strlen (sp.tar_name) + 2);
+  sprintf (path, "/%s%s", sp.path, sp.tar_name);
 
-  write (1, path, argv (path));
-  write (1, "\n", 1);
+  //write (1, sp.tar_path, strlen (sp.tar_path));
+  //write (1, "\n", 1);
   if(! file_exists_in_tar(path,sp.tar_path))
     {
       errno=ENOENT;
@@ -112,7 +112,7 @@ int rmdir_tar(char *argv)
 
   //count of nb of files path/name/xxx
   // if > 1 we can't erase dir, it's not empty
-  if (! is_empty (path, sp.tar_name))
+  if (! is_empty (path, sp.tar_path))
     {
       errno = ENOTEMPTY;
       perror("rdmir");

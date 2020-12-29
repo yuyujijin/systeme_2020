@@ -78,4 +78,8 @@ int file_exists_in_tar(char* path, char* name);
 //0 if not, and -1 in case of open error
 int is_empty (char *tarpath, char *name);
 
+//return 1 is the par path/ is empty
+//else 0
+int is_empty_tar (char* path);
+
 #endif
