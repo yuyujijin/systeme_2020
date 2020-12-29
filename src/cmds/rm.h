@@ -8,14 +8,14 @@
 #include "../tar_manipulation.h"
 #include "../useful.h"
 
-int main(int argc, const char** argv);
+int main(int argc,  char** argv);
 
-int rm_call(int argc,const char** argv);
+int rm_call(int argc, char** argv);
 
-int rm_tar_option(const char *argv, int start);
+int rm_tar_option( char *argv, int start);
 
-int last_is_tar(const char* argv);
+int last_is_tar( char* argv);
 
-int rm_tar(const char *argv, int tar_index);
+int rm_tar(char *tarname, char *tarpath, int optionR);
 
 #endif

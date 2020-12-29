@@ -28,7 +28,7 @@ cmds/cp: tar.c tar_manipulation.c cmds/cp.o useful.c cmds/cd.c
 cmds/rmdir : tar.c tar_manipulation.c cmds/rmdir.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/rm : tar.c tar_manipulation.c cmds/rm.o
+cmds/rm : tar.c tar_manipulation.c cmds/rm.o useful.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 .PHONY: clean cleanall
