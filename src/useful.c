@@ -62,6 +62,10 @@ char *getLastArg(char *path){
   return (strrchr(path,'/') != NULL)? strrchr(path,'/') + 1: path;
 }
 
+void freeSpecialPath(struct special_path sp){
+  free(sp.path); free(sp.tar_name); free(sp.tar_path);
+}
+
 char *getRealPath(char *path){
   char *pwd = getcwd(NULL,0);
   char *tarname = getenv("TARNAME");
