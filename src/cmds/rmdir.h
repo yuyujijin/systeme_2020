@@ -15,8 +15,6 @@ int main(int argc, char** argv);
 //else calls rmdir path
 int rmdir_call(int argc, char** argv);
 
-int last_is_tar(char* argv);
-
 int rmdir_tar(char *argv);
 
 #endif

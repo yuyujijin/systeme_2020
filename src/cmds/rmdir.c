@@ -49,7 +49,7 @@ int rmdir_call(int argc,char** argv)
 		case 0 :
 		  //if the path point a tar, delete the tar
 		  // it can be a tar or a dir called xx.t
-		  if(last_is_tar(path))
+		  if(strstr(path, ".tar") == &(path[strlen(path) - 4]))
 		    {
 		      if (is_empty_tar (path))
 			execlp("rm", "rm", "-r", path, NULL);
@@ -73,18 +73,6 @@ int rmdir_call(int argc,char** argv)
     default: wait(NULL);break;
     }
 return 0;
-}
-
-int last_is_tar(char* argv)
-{
-  if (argv[strlen(argv) - 4] == '.'
-      && argv[strlen(argv) - 3] == 't'
-      && argv[strlen(argv) - 2] == 'a'
-      && argv[strlen(argv) - 1] == 'r')
-    {
-      return 1;
-    }
-  else return 0;
 }
 
 int rmdir_tar(char *argv)
