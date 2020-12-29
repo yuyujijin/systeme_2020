@@ -237,13 +237,13 @@ int execute_redirection(int argc, char **argv){
       special_path sp = special_path_maker(p);
       if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
+      /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+      char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+      memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+      sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
       /* si on est dans un tar */
       if(strlen(sp.tar_name) > 0){
-        /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
-        char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
-        memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
-        sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
-
         struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
         if(ph == NULL){
@@ -272,6 +272,13 @@ int execute_redirection(int argc, char **argv){
             break;
           }
         }else{
+          char chemin[strlen(sp.path) + 2];
+          memset(chemin,0,strlen(sp.path) + 2);
+          sprintf(chemin,"/%s",sp.path);
+          chemin[strlen(chemin) - 1] = '\0';
+
+          argv[i + 1] = chemin;
+
           // On récupère les stats
           struct stat statbuf;
           // Si il existe, et que c'est un dossier -> erreur
@@ -304,13 +311,13 @@ int execute_redirection(int argc, char **argv){
       special_path sp = special_path_maker(p);
       if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
+      /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+      char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+      memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+      sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
       /* si on est dans un tar */
       if(strlen(sp.tar_name) > 0){
-        /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
-        char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
-        memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
-        sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
-
         struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
         if(ph == NULL){
@@ -342,6 +349,13 @@ int execute_redirection(int argc, char **argv){
           break;
         }
       }else{
+        char chemin[strlen(sp.path) + 2];
+        memset(chemin,0,strlen(sp.path) + 2);
+        sprintf(chemin,"/%s",sp.path);
+        chemin[strlen(chemin) - 1] = '\0';
+
+        argv[i + 1] = chemin;
+
         // On récupère les stats
         struct stat statbuf;
         // Si il existe, et que c'est un dossier -> erreur
@@ -372,13 +386,13 @@ int execute_redirection(int argc, char **argv){
       special_path sp = special_path_maker(p);
       if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
+      /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+      char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+      memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+      sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
       /* si on est dans un tar */
       if(strlen(sp.tar_name) > 0){
-        /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
-        char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
-        memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
-        sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
-
         struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
         if(ph == NULL){
@@ -407,6 +421,13 @@ int execute_redirection(int argc, char **argv){
           break;
         }
       }else{
+        char chemin[strlen(sp.path) + 2];
+        memset(chemin,0,strlen(sp.path) + 2);
+        sprintf(chemin,"/%s",sp.path);
+        chemin[strlen(chemin) - 1] = '\0';
+
+        argv[i + 1] = chemin;
+
         // On récupère les stats
         struct stat statbuf;
         // Si il existe, et que c'est un dossier -> erreur
@@ -416,13 +437,13 @@ int execute_redirection(int argc, char **argv){
             return -1;
           }
         }
-        int concat = open(argv[++i], O_CREAT | O_RDWR | O_APPEND, 0644);
+        int concat = open(argv[i + 1], O_CREAT | O_RDWR | O_APPEND, 0644);
         if (concat < 0) {
             perror("impossible de concatener au fichier.\n");
             return -1;
         }
-        if(!strcmp(argv[i - 1],">>")) dup2(concat, STDOUT_FILENO);
-        if(!strcmp(argv[i - 1],"2>>")) dup2(concat, STDERR_FILENO);
+        if(!strcmp(argv[i],">>")) dup2(concat, STDOUT_FILENO);
+        if(!strcmp(argv[i],"2>>")) dup2(concat, STDERR_FILENO);
 
         close(concat);
       }
