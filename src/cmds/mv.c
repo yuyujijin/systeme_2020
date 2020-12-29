@@ -54,28 +54,36 @@ int mv(int argc, char **argv){
     exit(-1);
   }
 
+  char *new_argv[argc+1];
+  new_argv[0]=argv[0];
+  new_argv[1]="-r";
+  for(int i=1;i<argc;i++){
+    new_argv[i+1]=argv[i];
+  }
+  new_argv[argc+1]=NULL;
+
   // Sinon
   int r = fork(), w;
   // On copie en premier
   switch (r) {
     case -1 : perror("fork"); exit(EXIT_FAILURE);
     case 0  :
-      exec_cmd("cp",argv);
-      exit(-1);
+      exec_cmd("cp",new_argv);
+      exit(1);
     default : waitpid(r, &w, 0); break;
   }
-  if(WEXITSTATUS(w) != 0) return -1;
-  
+  if(WEXITSTATUS(w)< 0) return -1;
+
   // Puis on supprime
   r = fork();
   switch (r) {
     case -1 : perror("fork"); exit(EXIT_FAILURE);
     case 0  :
-      argv[argc - 1] = NULL;
-      exec_cmd("rm",argv);
-      exit(-1);
+      new_argv[argc] =NULL;
+      exec_cmd("rm",new_argv);
+      exit(1);
     default : waitpid(r, &w, 0); break;
   }
-  if(WEXITSTATUS(w) != 0) return -1;
+  if(WEXITSTATUS(w) < 0) return -1;
   return 1;
 }
