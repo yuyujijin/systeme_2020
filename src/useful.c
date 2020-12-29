@@ -37,6 +37,7 @@ char* path_simplifier(char* path){
 
   if(size == 0) return ".";
 
+
   char *s = malloc(sizeof(char) * (len + size));
   if(s == NULL) return NULL;
   memset(s,0,len + size);

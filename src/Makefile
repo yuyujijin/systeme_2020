@@ -4,6 +4,10 @@ LDFLAGS= -lm -g
 
 ALL=shell cmds/pwd cmds/ls cmds/cat cmds/mkdir cmds/rmdir cmds/rm cmds/cp
 
+<<<<<<< HEAD
+=======
+ALL=shell cmds/pwd cmds/ls cmds/cat cmds/mkdir cmds/rmdir cmds/cp cmds/mv
+>>>>>>> develop_linkage
 
 all: $(ALL)
 
@@ -11,6 +15,9 @@ shell: tar.c tar_manipulation.c cmds/cd.c shell.c useful.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 cmds/pwd: cmds/pwd.o
+
+	
+cmds/mv: cmds/mv.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 cmds/ls: tar.c tar_manipulation.c cmds/ls.o useful.c cmds/cd.c
