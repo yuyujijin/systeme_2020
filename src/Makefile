@@ -25,7 +25,7 @@ cmds/mkdir: tar.c tar_manipulation.c cmds/mkdir.o useful.c cmds/cd.c
 cmds/cp: tar.c tar_manipulation.c cmds/cp.o useful.c cmds/cd.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cmds/rmdir : tar.c tar_manipulation.c cmds/rmdir.o
+cmds/rmdir : tar.c tar_manipulation.c cmds/rmdir.o useful.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 cmds/rm : tar.c tar_manipulation.c cmds/rm.o
