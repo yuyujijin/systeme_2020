@@ -34,6 +34,23 @@ int rm_call(int argc,char** argv)
 
       struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
+      if(strlen(sp.tar_path) == 0){
+        if(optionR){
+          int r = fork();
+          switch(r){
+            case -1 : return -1;
+            case 0 :
+            execlp("rm","rm",tarlocation,NULL);
+            exit(-1);
+            default : waitpid(r, NULL, 0); break;
+          }
+          continue;
+        }else{
+          perror("est un dossier. (vous avez peut être oublié l'option '-r'?)");
+          continue;
+        }
+      }
+
       if(ph == NULL){
         perror("impossible d'ouvrir le fichier.\n");
         continue;
