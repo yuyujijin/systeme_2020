@@ -235,6 +235,8 @@ int execute_redirection(int argc, char **argv){
       (chemin, nom du tar et path dans le tar séparé) */
       char *p = getRealPath(argv[i+1]);
       special_path sp = special_path_maker(p);
+      free(p);
+
       if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
       /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
@@ -309,6 +311,8 @@ int execute_redirection(int argc, char **argv){
       (chemin, nom du tar et path dans le tar séparé) */
       char *p = getRealPath(argv[i+1]);
       special_path sp = special_path_maker(p);
+      free(p);
+
       if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
       /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
@@ -320,12 +324,7 @@ int execute_redirection(int argc, char **argv){
       if(strlen(sp.tar_name) > 0){
         struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
-        if(ph == NULL){
-          perror("impossible d'ouvrir le fichier.\n");
-          return -1;
-        }
-
-        if(ph->typeflag == '5'){
+        if(ph != NULL && ph->typeflag == '5'){
           perror("est un dossier.");
           return -1;
         }
@@ -384,6 +383,8 @@ int execute_redirection(int argc, char **argv){
       (chemin, nom du tar et path dans le tar séparé) */
       char *p = getRealPath(argv[i+1]);
       special_path sp = special_path_maker(p);
+      free(p);
+
       if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
       /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
