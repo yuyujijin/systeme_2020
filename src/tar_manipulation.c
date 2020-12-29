@@ -106,9 +106,25 @@ int appendTar(char *path, char *name){
   char buf[BLOCKSIZE];
   memset(buf,0,BLOCKSIZE);
 
+  // Ce sont les bytes qu'on doit rajouter au bloc final du fichier
+  // avant de réecrire de nouveaux blocs
+  size_t sizeread;
+
   switch(fork()){
     case -1 : return -1;
     case 0 :
+    close(pipefd[0]);
+    for(int i = 0; i < s; i++){
+      memset(buf,0,BLOCKSIZE);
+      if(read(fd,buf,BLOCKSIZE) < 0)
+      { perror("erreur lors de la lecture dans le tar."); return -1; }
+      if(write(pipefd[1],buf,BLOCKSIZE) < 0)
+      { perror("erreur lors de l'écriture dans le tar."); return -1; }
+    }
+    close(fd);
+    close(pipefd[1]);
+    exit(0);
+    default :
     close(pipefd[1]);
     close(fd);
 
@@ -119,36 +135,21 @@ int appendTar(char *path, char *name){
     if(write(fd,&tampon,sizeof(struct posix_header)) < 0)
     { perror("erreur lors de l'écriture dans le tar."); return -1; }
 
-    while(read(pipefd[0], buf, BLOCKSIZE) > 0){
-      if(write(fd,buf,BLOCKSIZE) < 0)
-      { perror("erreur lors de l'écriture dans le tar."); return -1; }
-      memset(buf,0,BLOCKSIZE);
-    }
-    close(fd);
-    close(pipefd[0]);
-    exit(0);
-    default :
-    close(pipefd[0]);
-    for(int i = 0; i < s; i++){
-      memset(buf,0,BLOCKSIZE);
-      if(read(fd,buf,BLOCKSIZE) < 0)
-      { perror("erreur lors de la lecture dans le tar."); return -1; }
-      if(write(pipefd[1],buf,BLOCKSIZE) < 0)
+    while((sizeread = read(pipefd[0], buf, BLOCKSIZE)) > 0){
+      if(write(fd,buf,sizeread) < 0)
       { perror("erreur lors de l'écriture dans le tar."); return -1; }
     }
-    close(pipefd[1]);
+    close(pipefd[0]);
     break;
   }
 
-  // Ce sont les bytes qu'on doit rajouter au bloc final du fichier
-  // avant de réecrire de nouveaux blocs
-  unsigned int missing = BLOCKSIZE - strlen(buf);
+  int missing = BLOCKSIZE - strlen(buf);
 
   // Puis on supprimer le fichier
   if(rmTar(path,name) < 0)
   { perror("appendTar."); return -1; }
 
-  lseek(fd,offsetTar(path) - missing, SEEK_SET);
+  lseek(fd,offsetTar(path) - missing,SEEK_SET);
 
   char buffer[BLOCKSIZE];
   unsigned int bufsize = 0;
@@ -160,17 +161,18 @@ int appendTar(char *path, char *name){
   /* read everything from STDIN and write in the tarball */
   while((size = read(STDIN_FILENO, buffer, sizeToRead)) > 0){
     bufsize += size;
+    sizeToRead -= size;
     if(write(fd,buffer,size) < 0){ perror("erreur lors de l'écriture dans le tar \n"); return -1; }
     memset(buffer,0,BLOCKSIZE);
-    if(sizeToRead != BLOCKSIZE) sizeToRead = BLOCKSIZE;
-  }
-  /* if the last red block is < BLOCKSIZE then we have to fill with '\0' */
-  if(size - missing < BLOCKSIZE){
-    char empty[BLOCKSIZE - size + missing];
-    memset(empty,'\0',BLOCKSIZE - size + missing);
-    if(write(fd,empty,BLOCKSIZE - size + missing) < 0) return -1;
+    if(sizeToRead <= 0) sizeToRead = BLOCKSIZE;
   }
 
+  /* if the last red block is < BLOCKSIZE then we have to fill with '\0' */
+  if(size - sizeToRead < BLOCKSIZE){
+    char empty[BLOCKSIZE - size + sizeToRead];
+    memset(empty,'\0',BLOCKSIZE - size + sizeToRead);
+    if(write(fd,empty,BLOCKSIZE - size + sizeToRead) < 0) return -1;
+  }
 
   /* We then put the two empty blocks at the end of the tar */
   char emptybuf[512];
@@ -645,10 +647,7 @@ int file_exists_in_tar(char* path, char* name){
   //if tarball path doesn't exist
   if(fd<0)
     {
-      close(fd);
-      errno=17;
-      perror("mkdir");
-      exit(EXIT_FAILURE);
+      return 0;
     }
   while(read(fd, &hd, sizeof(struct posix_header))){
     if(hd.name[0]=='\0')
