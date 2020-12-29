@@ -25,7 +25,7 @@ int mkDir_call(int argc,char** argv){
         memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
         sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
 
-        return addDirTar(sp.tar_name,sp.tar_path);
+        return addDirTar(tarlocation,sp.tar_path);
       }else{
         char path[strlen(sp.path) + 2];
         memset(path,0,strlen(sp.path) + 2);
