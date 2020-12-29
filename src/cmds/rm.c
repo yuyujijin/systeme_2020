@@ -1,7 +1,5 @@
 #include"rm.h"
 
-int is_empty(const char *path);
-
 int main(int argc, const char** argv)
 {
   return rm_call(argc,argv);
@@ -79,7 +77,7 @@ int rm_call(int argc,const char** argv)
 	    //if we're in the case we have to deal with tar
 	    else
 	      {
-		write(1,getRealPath(argv[i]),strlen(getRealPath(argv[i])));
+		//write(1,getRealPath(argv[i]),strlen(getRealPath(argv[i])));
 		write(1,"\n",1);
 		//we create pathname, under the form
 		// "tarname/tarpath/argv[i]"
@@ -333,8 +331,6 @@ int rm_tar_option(const char *argv, int start)
   if (index <= 2)
     {
       rmTar(path, name);
-      if (is_empty(path))
-	execlp("rm","rm",path,NULL);
     }
   else
     {
@@ -358,30 +354,9 @@ int rm_tar_option(const char *argv, int start)
 
   close (fd);
 
-  if (is_empty(path))
-    execlp("rm","rm",path,NULL);
   free(name);
   free(path);
   return 0;
     
 }
 
-int is_empty(const char *path)
-{
-  int fd = open(path,O_RDONLY);
-  //if tarball path doesn't exist
-  if(fd < 0)
-    {
-      close (fd);
-      errno=17;
-      perror("rmdir");
-      exit(EXIT_FAILURE);
-    }
-
-   struct posix_header hd;
-   int ret = read(fd, &hd, sizeof(struct posix_header));
-   close(fd);
-   return (ret);
-
-  
-}
