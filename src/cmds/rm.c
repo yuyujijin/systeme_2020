@@ -94,6 +94,10 @@ int rm_tar(char *tarname, char *tarpath, int optionR)
   }
   int fd = open(tarname,O_RDONLY);
   if(fd < 0) return -1;
+  char s[strlen(tarpath) + 2];
+  memset(s,0,strlen(tarpath) + 2);
+  sprintf(s,"%s/",tarpath);
+  tarpath = s;
 
   while(1){
     struct posix_header tampon;
