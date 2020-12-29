@@ -1,5 +1,5 @@
-#ifndef MKDIR_H
-#define MKDIR_H
+#ifndef RMDIR_H
+#define RMDIR_H
 #define _POSIX_C_SOURCE 200809L
 #include <limits.h>
 #include <errno.h>

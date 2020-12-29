@@ -311,6 +311,18 @@ int execute_redirection(int argc, char **argv){
         memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
         sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
 
+        struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
+
+        if(ph == NULL){
+          perror("impossible d'ouvrir le fichier.\n");
+          return -1;
+        }
+
+        if(ph->typeflag == '5'){
+          perror("est un dossier.");
+          return -1;
+        }
+
         /* puis on pipe la sortie du pipe sur STDIN, et on pipe l'entrée sur stdout */
         int pipefd[2];
         pipe(pipefd);
@@ -366,6 +378,18 @@ int execute_redirection(int argc, char **argv){
         char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
         memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
         sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
+        struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
+
+        if(ph == NULL){
+          perror("impossible d'ouvrir le fichier.\n");
+          return -1;
+        }
+
+        if(ph->typeflag == '5'){
+          perror("est un dossier.");
+          return -1;
+        }
 
         int pipefd[2];
         pipe(pipefd);

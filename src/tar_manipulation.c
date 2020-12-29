@@ -647,10 +647,7 @@ int file_exists_in_tar(char* path, char* name){
   //if tarball path doesn't exist
   if(fd<0)
     {
-      close(fd);
-      errno=17;
-      perror("mkdir");
-      exit(EXIT_FAILURE);
+      return 0;
     }
   while(read(fd, &hd, sizeof(struct posix_header))){
     if(hd.name[0]=='\0')
