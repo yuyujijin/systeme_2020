@@ -3,11 +3,13 @@ CFLAGS=-W -Wunused-value -Wall -ansi -pedantic -std=c99
 LDFLAGS= -lm -g
 
 
-ALL=shell cmds/pwd cmds/ls cmds/cat cmds/mkdir cmds/rmdir cmds/cp
+ALL=shell cmds/pwd cmds/ls cmds/cat cmds/mkdir cmds/rmdir cmds/cp unit_test
 
 all: $(ALL)
 
 shell: tar.c tar_manipulation.c cmds/cd.c shell.c useful.c
+
+unit_test: tar.c cmds/cd.c unit_test.c tar_manipulation.c cmds/cd.c useful.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 cmds/pwd: cmds/pwd.o
