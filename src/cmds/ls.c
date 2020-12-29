@@ -15,7 +15,7 @@ int ls(int argc, char **argv){
   }
 
   for(int i = 1; i < argc; i++){
-    if(argc - L > 1){
+    if(argc - L - 1 > 1){
       write(STDOUT_FILENO,argv[i],strlen(argv[i]));
       write(STDOUT_FILENO,":\n",2);
     }
@@ -24,12 +24,13 @@ int ls(int argc, char **argv){
     special_path sp = special_path_maker(p);
     if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
+    /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+    char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+    memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+    sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
       /* si on est dans un tar */
     if(strlen(sp.tar_name) > 0){
-        /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
-        char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
-        memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
-        sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
 
         if(strlen(sp.tar_path) > 0){
           struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
@@ -50,14 +51,16 @@ int ls(int argc, char **argv){
         ls_tar(tarlocation,sp.tar_path,L);
 
       }else{
-        printf("ici!\n");
         int r;
         r = fork();
         switch(r){
           case -1 : return -1;
           case 0 :
-          if(!L) execlp("ls","ls",argv[i],NULL);
-          execlp("ls","ls","-l",argv[i],NULL);
+          if(!L){
+            execlp("ls","ls",tarlocation,NULL);
+          }else{
+            execlp("ls","ls","-l",tarlocation,NULL);
+          }
           exit(-1);
           default : waitpid(r,NULL,0); break;
         }
