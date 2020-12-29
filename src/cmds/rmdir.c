@@ -39,8 +39,7 @@ int rmdir_call(int argc,char** argv)
 	  strcat ( path, "\0");	  
 	  
 	  //if we're working in a regular path
-	  int tar_index = has_tar(path);
-	  if(!tar_index && (getenv("TARNAME")[0]=='\0'))
+	  if(! (has_tar(path)) && (getenv("TARNAME")[0]=='\0'))
 	    {
 	      switch(fork())
 		{
@@ -90,25 +89,27 @@ int last_is_tar(char* argv)
 
 int rmdir_tar(char *argv)
 {
-  //write (1, argv, strlen (argv));
-  //write (1, "\n", 1);
   special_path sp = special_path_maker (argv);
 
-  //write (1, sp.tar_name, strlen(sp.tar_name));
-  //write (1,"\n",1);
   char path[strlen(sp.path) + strlen (sp.tar_name) + 2];
   memset (path, 0, strlen(sp.path) + strlen (sp.tar_name) + 2);
   sprintf (path, "/%s%s", sp.path, sp.tar_name);
 
-  //write (1, sp.tar_path, strlen (sp.tar_path));
-  //write (1, "\n", 1);
+  
+  if (file_exists_in_tar(path,substr(sp.tar_path,0,strlen(sp.tar_path) -1)))
+    {
+      errno = ENOTDIR;
+      perror("rmdir");
+      exit (EXIT_FAILURE);
+    }
+
+  write(1, sp.tar_path, strlen(sp.tar_path));
   if(! file_exists_in_tar(path,sp.tar_path))
     {
       errno=ENOENT;
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
-
 
   //count of nb of files path/name/xxx
   // if > 1 we can't erase dir, it's not empty
