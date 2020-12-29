@@ -721,7 +721,7 @@ int is_empty_tar (char* path)
 
   int ret = 1;
   if (read(fd, &hd, sizeof(struct posix_header)))
-    ret = 0;
+    ret = (hd.name[0] == '\0');
   close(fd);
   return ret;
 
