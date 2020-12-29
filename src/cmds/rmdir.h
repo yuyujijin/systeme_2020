@@ -17,6 +17,6 @@ int rmdir_call(int argc, char** argv);
 
 int last_is_tar(char* argv);
 
-int rmdir_tar(char *argv, int tar_index);
+int rmdir_tar(char *argv);
 
 #endif

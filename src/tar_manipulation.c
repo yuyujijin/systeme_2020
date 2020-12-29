@@ -661,3 +661,47 @@ int file_exists_in_tar(char* path, char* name){
   }
   return 0;
 }
+
+int is_empty (char *tarpath, char *name)
+{
+  struct posix_header hd;
+  int fd;
+
+  fd = open(tarpath,O_RDONLY);
+
+  if(fd<0)
+    {
+      close (fd);
+      return -1;
+    }
+
+  //count of nb of files path/name/xxx
+  // if > 1 we can't erase dir, it's not empty
+  unsigned int count = 0;
+  while(read(fd, &hd, sizeof(struct posix_header))){
+    //verify that dir name is empty
+    //that doesn't exist file name/xxx
+    if (strlen (hd.name) >= strlen (name))
+      {
+	for (unsigned int i = 0; i < strlen (name) ; i ++)
+	  {
+	    if (hd.name[i] != name[i]) break;
+	    else if (i == strlen (name) - 1)
+	      count ++;
+	  }
+	if (count > 1)
+	  {
+	    close (fd);
+	    return 0;
+	  }
+      }
+    int filesize;
+    sscanf(hd.size,"%d", &filesize);
+    int s = (filesize + 512 - 1)/512;
+    struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
+    read(fd, temp, s * BLOCKSIZE);
+    free(temp);
+  }
+  close (fd);
+  return (count == 1);
+}

@@ -3,7 +3,6 @@
 
 int main(int argc, char** argv)
 {
-  printf ("%d\n", has_tar(getRealPath(argv[1])));
   return rmdir_call(argc,argv);
 }
 
@@ -18,7 +17,7 @@ int rmdir_call(int argc,char** argv)
       perror("rmdir");
       exit(EXIT_FAILURE);
     case 0: //son
-      //if rmdir called without argument
+      //if rmdir is called without argument
       if(argc==1)
 	{
 	  errno=22; //invalid argument
@@ -62,11 +61,11 @@ int rmdir_call(int argc,char** argv)
 	    {
 	      //if we're not in a tar
 	      if (getenv("TARNAME")[0]=='\0') 
-		rmdir_tar(path, tar_index);
+		rmdir_tar(path);
 		
 	      //if we're in a tar
 	      else 
-		rmdir_tar(path, tar_index);
+		rmdir_tar(path);
 		
 	    }
 	  free (path);
@@ -90,99 +89,37 @@ int last_is_tar(char* argv)
   else return 0;
 }
 
-int rmdir_tar(char *argv, int start)
+int rmdir_tar(char *argv)
 {
+  write (1, argv, strlen (argv));
+  write (1, "\n", 1);
   special_path sp = special_path_maker (argv);
 
-  char path [strlen (sp.path) + strlen (sp.tar_name) + 1];
+  char path[strlen(sp.path) + 2];
+  memset(path,0,strlen(sp.path) + 2);
+  sprintf(path,"/%s",sp.path);
+  path[strlen(path) - 1] = '\0';
 
-  path = sp.path;
-  path + strlen (sp.path) = sp.tar_name;
-  path [strlen (path - 1)] = '\0';
-  /*write (1, argv, strlen(argv));
-  //name is the name of the directory in the tar
-  char name [strlen(argv) - start + 1] = substr (argv, start, strlen(argv));
-  //memset (name, '\0', strlen(argv) - start + 1);
-  memcpy(name, argv + start, strlen(argv) - start);
-  
-  //needs to end by '/'
-  if(argv[strlen(argv)-1]!='/')
-    name[strlen(name)]='/';
-  
-  //path is the path of the tarball
-  char path [start + 1];
-  memset (name, '\0', strlen(argv) - start + 1);
-  memcpy(path,argv,strlen(argv)-(start + 1));
-
-  write (1, "name : ", 7);
-  write (1, name, strlen(name));
-  write (1, "\n", 1);*/
-  write (1, path, strlen(path));
+  write (1, path, argv (path));
   write (1, "\n", 1);
- 
-  //check if the path exists in the tarball
-  if(! file_exists_in_tar(path,name))
+  if(! file_exists_in_tar(path,sp.tar_path))
     {
       errno=ENOENT;
       perror("rmdir");
       exit(EXIT_FAILURE);
     }
 
-  struct posix_header hd;
-  int fd;
-
-  fd = open(path,O_RDONLY);
-  //if tarball path doesn't exist
-  if(fd<0)
-    {
-      close(fd);
-      errno=17;
-      perror("rmdir");
-      exit(EXIT_FAILURE);
-    }
 
   //count of nb of files path/name/xxx
   // if > 1 we can't erase dir, it's not empty
-  unsigned int count = 0;
-  while(read(fd, &hd, sizeof(struct posix_header))){
+  if (! is_empty (path, sp.tar_name))
+    {
+      errno = ENOTEMPTY;
+      perror("rdmir");
+      exit (EXIT_FAILURE);
+    }
   
-    if(hd.name[0]=='\0')
-      {
-	break;
-      }
+  rmTar(path, sp.tar_path);
 
-    //verify that dir name is empty
-    //that doesn't exist file name/xxx
-    if (strlen (hd.name) >= strlen (name))
-      {
-	for (unsigned int i = 0; i < strlen (name) ; i ++)
-	  {
-	    if (hd.name[i] != name[i]) break;
-	    else if (i == strlen (name) - 1)
-	      count ++;
-	  }
-	if (count > 1)
-	  {
-	      errno=ENOTEMPTY;
-	      perror ("rmdir");
-	      free(name);
-	      free(path);
-	      close(fd);
-	      exit(EXIT_FAILURE);
-	    }
-      }
-
-    int filesize;
-    sscanf(hd.size,"%d", &filesize);
-    int s = (filesize + 512 - 1)/512;
-    struct posix_header* temp = malloc(sizeof(struct posix_header) * s);
-    read(fd, temp, s * BLOCKSIZE);
-    free(temp);
-  }
-
-  rmTar(path, name);
-  close (fd);
-  free(name);
-  free(path);
   return 0;
 }
