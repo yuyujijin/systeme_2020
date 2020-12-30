@@ -38,7 +38,18 @@ Si c'est le cas.
 
 ### ls
 
+  On utilise special_path_maker et qui nous donne donc l'emplacement de notre argument.
+
+  Si c'est un fichier normal, on fait un simple ls en prenant en compte des options.
+
+  Si c'est un tar, ou dossier dans un tar, on boucle avec un read, et on affiche soit juste les nom des fichier du dossier ou soit les informations du fichier suivant l'option -l
+
 ### cat
+  On utilise special_path_maker et qui nous donne donc l'emplacement de notre argument.
+
+  Si c'est un fichier normal, on fait un simple cat
+
+  Si c'est un tar, on applique rdTar() qui affiche les données du fichier
 
 ### cd
 
