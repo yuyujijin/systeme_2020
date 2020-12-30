@@ -3,10 +3,18 @@
 char *month[]={"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"};
 
 int ls(int argc, char **argv){
-  if(argc == 1) return ls_tar(0);
-  if(argc == 2 && !strcmp(argv[1],"-l")) return ls_tar(1);
   int L = optionL(argc,argv);
+  if(argc == 1 || (argc == 2 && !strcmp(argv[1],"-l"))){
+    if(strlen(getenv("TARNAME")) > 0){
+      ls_tar(getenv("TARNAME"),getenv("TARPATH"),L);
+    }else{
+      if(!L) execlp("ls","ls",NULL);
+      execlp("ls","ls","-l",NULL);
+      exit(-1);
+    }
+  }
 
+  /*<<<<<<< HEAD
   switch (fork()) {
     case -1 : perror("fork");exit(EXIT_FAILURE);
     case 0 :
@@ -52,20 +60,63 @@ int ls(int argc, char **argv){
           if(strlen(getenv("TARNAME"))) return ls_tar(L);
           if(L) execlp("ls","ls","-l",NULL);
           execlp("ls","ls",NULL);
-        }
-        // sinon on print le nom (non dossier)
-        write(STDOUT_FILENO,last_arg,strlen(last_arg));
-        write(STDOUT_FILENO,"\n",1);
-        exit(1);
-        default : wait(NULL); break;
-      }
-      if(i < argc - 1) write(STDOUT_FILENO,"\n",1);
+	  =======*/
+  for(int i = 1; i < argc; i++){
+    if(argc - L - 1 > 1){
+      write(STDOUT_FILENO,argv[i],strlen(argv[i]));
+      write(STDOUT_FILENO,":\n",2);
     }
-    exit(0);
-    default : wait(NULL);break;
+    if(!strcmp(argv[i],"-l")) continue;
+    char *p = getRealPath(argv[i]);
+    special_path sp = special_path_maker(p);
+    if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
+
+    /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+    char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+    memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+    sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
+
+      /* si on est dans un tar */
+    if(strlen(sp.tar_name) > 0){
+
+        if(strlen(sp.tar_path) > 0){
+          struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
+
+          if(ph == NULL){
+            perror("impossible d'ouvrir le fichier.\n");
+            return -1;
+          }
+
+          // Si c'est un fichier on print son nom
+          if(ph->typeflag == '0'){
+            write(STDOUT_FILENO,argv[i],strlen(argv[i]));
+            write(STDOUT_FILENO,"\n",1);
+            continue;
+          }
+        }
+
+        ls_tar(tarlocation,sp.tar_path,L);
+
+      }else{
+        int r;
+        r = fork();
+        switch(r){
+          case -1 : return -1;
+          case 0 :
+          if(!L){
+            execlp("ls","ls",tarlocation,NULL);
+          }else{
+            execlp("ls","ls","-l",tarlocation,NULL);
+          }
+          exit(-1);
+          default : waitpid(r,NULL,0); break;
+	    //>>>>>>> develop_linkage
+        }
+      }
+      if(argc - L > 1 && i < argc - 1) write(STDOUT_FILENO,"\n",1);
+    }
+    return 0;
   }
-  return 0;
-}
 
 int optionL(int argc, char **argv){//if option<-1 then "ls" else "ls -l"
   for(int i=0;i<argc;i++){
@@ -106,10 +157,15 @@ int printOptionL(struct posix_header *tampon){
   return 1;
 }
 
-int ls_tar(int option){
-  int fd = open(getenv("TARNAME"),O_RDONLY);
-  char *path = getenv("TARPATH");
+int ls_tar(char *tarname, char *tarpath, int option){
+  int fd = open(tarname,O_RDONLY);
   if(fd < 0) return -1;
+  char path[strlen(tarpath) + 2];
+  memset(path,0,strlen(tarpath) + 2);
+  if(strlen(tarpath) > 0) sprintf(path,"%s/",tarpath);
+  if(strlen(tarpath) > 0 && path[strlen(path) - 2] == '/')
+    path[strlen(path) - 1] = '\0';
+  int printed = 0;
 
   while(1){
 
@@ -123,6 +179,7 @@ int ls_tar(int option){
     if(!strncmp(tampon.name,path,strlen(path))){
       /* are on 'same level' (and not the same)*/
       if(strcmp(tampon.name,path) != 0 && sameLevel(tampon.name + strlen(path))){
+        printed++;
         if(!option){
           if(write(1,tampon.name + strlen(path),strlen(tampon.name) - strlen(path)) < 0)return -1;
           if(write(1," ",1) < 0)return -1;
@@ -147,7 +204,7 @@ int ls_tar(int option){
     int s = (filesize + 512 - 1)/512;
     lseek(fd,s * 512,SEEK_CUR);
   }
-  if(!option) if(write(1,"\n",1) < 0) return -1;
+  if(!option && printed > 0) if(write(1,"\n",1) < 0) return -1;
   return 0;
 }
 

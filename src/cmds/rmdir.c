@@ -34,6 +34,7 @@ int rmdir_call(int argc,char** argv)
 	      perror("rmdir");
 	      exit (EXIT_FAILURE);
 	    }
+	  memset (path,'\0',strlen(getRealPath(argv[i])) + 2); 
 	  strcat ( path, "/");
 	  strcat ( path, getRealPath(argv[i]) );
 	  strcat ( path, "\0");	  
@@ -80,9 +81,8 @@ int rmdir_tar(char *argv)
   special_path sp = special_path_maker (argv);
 
   char path[strlen(sp.path) + strlen (sp.tar_name) + 2];
-  memset (path, 0, strlen(sp.path) + strlen (sp.tar_name) + 2);
+  memset (path, '\0', strlen(sp.path) + strlen (sp.tar_name) + 2);
   sprintf (path, "/%s%s", sp.path, sp.tar_name);
-
   
   if (file_exists_in_tar(path,substr(sp.tar_path,0,strlen(sp.tar_path) -1)))
     {
@@ -90,7 +90,7 @@ int rmdir_tar(char *argv)
       perror("rmdir");
       exit (EXIT_FAILURE);
     }
-
+  
   if(! file_exists_in_tar(path,sp.tar_path))
     {
       errno=ENOENT;
@@ -98,8 +98,6 @@ int rmdir_tar(char *argv)
       exit(EXIT_FAILURE);
     }
 
-  //count of nb of files path/name/xxx
-  // if > 1 we can't erase dir, it's not empty
   if (! is_empty (path, sp.tar_path))
     {
       errno = ENOTEMPTY;

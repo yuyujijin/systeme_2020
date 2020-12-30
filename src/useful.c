@@ -37,6 +37,7 @@ char* path_simplifier(char* path){
 
   if(size == 0) return ".";
 
+
   char *s = malloc(sizeof(char) * (len + size));
   if(s == NULL) return NULL;
   memset(s,0,len + size);
@@ -59,6 +60,10 @@ char* pathminus(char *path, char *lastarg){
 
 char *getLastArg(char *path){
   return (strrchr(path,'/') != NULL)? strrchr(path,'/') + 1: path;
+}
+
+void freeSpecialPath(struct special_path sp){
+  free(sp.path); free(sp.tar_name); free(sp.tar_path);
 }
 
 char *getRealPath(char *path){

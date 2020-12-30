@@ -20,5 +20,6 @@ char* pathminus(char *path, char *lastarg);
 char *getLastArg(char *path);
 int cdTo(char *path, char* last_arg);
 char *getRealPath(char *path);
+void freeSpecialPath(struct special_path sp);
 
 #endif

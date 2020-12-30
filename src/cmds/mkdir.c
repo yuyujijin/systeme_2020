@@ -1,6 +1,7 @@
 #include "mkdir.h"
 
 int mkDir_call(int argc,char** argv);
+int createTar(char *tarname);
 
 int main(int argc,char** argv)
 {
@@ -9,35 +10,67 @@ int main(int argc,char** argv)
 
 int mkDir_call(int argc,char** argv){
   for(int i = 1; i < argc; i++){
-    char *last_arg;
-    int w;
-    switch(fork()){
+    char *p; special_path sp;
+    int r = fork();
+    switch(r){
       case -1 : return -1;
       case 0 :
-      last_arg = getLastArg(argv[i]);
-      // si le dernier argument != argv[i] (on tente d'y acceder)
-      if(strcmp(argv[i],last_arg)) if(cd(pathminus(argv[i],last_arg)) < 0) exit(EXIT_FAILURE);
-      // si on est dans un tar
-      if(strlen(getenv("TARNAME"))){
-        char dirname[strlen(getenv("TARPATH")) + strlen(last_arg) + 2];
-        memset(dirname,0,strlen(getenv("TARPATH")) + strlen(last_arg) + 2);
+      p = getRealPath(argv[i]);
+      sp = special_path_maker(p);
+      if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
-        strcat(dirname,getenv("TARPATH"));
-        strcat(dirname,last_arg);
-        strcat(dirname,"/");
+      /* si on est dans un tar */
+      if(strlen(sp.tar_name) > 0){
+        /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
+        char tarlocation[strlen(sp.path) + strlen(sp.tar_name) + 2];
+        memset(tarlocation,0,strlen(sp.path) + strlen(sp.tar_name) + 2);
+        sprintf(tarlocation,"/%s%s",sp.path,sp.tar_name);
 
-        return addDirTar(getenv("TARNAME"),dirname);
+        // On créer un tar vide
+        if(strlen(sp.tar_path) == 0){
+          execlp("tar","tar","cvf",tarlocation,"--files-from","/dev/null",NULL);
+          exit(-1);
+        }
+
+        char *lastArg = getLastArg(sp.tar_path);
+        if(strstr(lastArg,".tar") != NULL){
+          perror("tar dans un tar interdit.");
+          return -1;
+        }
+
+        char tarpath[strlen(sp.tar_path) + 2];
+        memset(tarpath,0,strlen(sp.tar_path) + 2);
+        sprintf(tarpath,"%s/",sp.tar_path);
+
+        return addDirTar(tarlocation,tarpath);
       }else{
+        char path[strlen(sp.path) + 2];
+        memset(path,0,strlen(sp.path) + 2);
+        sprintf(path,"/%s",sp.path);
         // si on l'est pas
-        if(execlp("mkdir","mkdir",last_arg,NULL)<0){
+        if(execlp("mkdir","mkdir",path,NULL)<0){
             perror("mkdir");
             exit(EXIT_FAILURE);
         }
       }
       exit(-1);
-      default : wait(&w); break;
+      default : waitpid(r, NULL, 0); break;
     }
   }
+  return 1;
+}
+
+int createTar(char *tarname){
+  int fd = open(tarname,O_RDWR | O_CREAT);
+  if(fd < 0){ perror("mkdir"); return -1; }
+  char buf[BLOCKSIZE];
+
+  for(int i = 0; i < 2; i++){
+    memset(buf,0,BLOCKSIZE);
+    if(write(fd,buf,BLOCKSIZE) < 0) return -1;
+  }
+
+  close(fd);
   return 1;
 }
 
