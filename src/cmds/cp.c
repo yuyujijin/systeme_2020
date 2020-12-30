@@ -18,13 +18,9 @@ int cp_nargs(char**argv, int argc);
 and then copies every files in argv[2] with cp_2args */
 int cp_r(char** argv);
 /* tries to cd to path minus lastarg */
-int cdTo(char *path, char* last_arg);
-/* reads data in pipe and writes it in file_name. tar specifies if its a tar or not */
 int readPipeWriteFile(struct special_path sp, int tar, int pipe_fd);
 /* same as above but reads in file and write in pipe */
 int readFileWritePipe(struct special_path sp, int tar, int pipe_fd);
-/* concatenate arg with env variable "TARPATH" */
-char *tarpathconcat(char *arg);
 int isDir(char *path);
 void createDir(char **argv);
 
@@ -60,10 +56,12 @@ int cp_r(char **argv){
     char p1[strlen(sp1.path) + 2];
     memset(p1,0,strlen(sp1.path) + 2);
     sprintf(p1,"/%s",sp1.path);
+    if(p1[strlen(p1) - 1] == '/') p1[strlen(p1) - 1] = '\0';
 
     char p2[strlen(sp2.path) + 2];
     memset(p2,0,strlen(sp2.path) + 2);
     sprintf(p2,"/%s",sp2.path);
+    if(p2[strlen(p2) - 1] == '/') p2[strlen(p2) - 1] = '\0';
     execlp("cp","cp","-r",p1,p2,NULL);
     exit(-1);
   }
@@ -262,10 +260,12 @@ int cp_2args(char **argv){
     char p1[strlen(sp1.path) + 2];
     memset(p1,0,strlen(sp1.path) + 2);
     sprintf(p1,"/%s",sp1.path);
+    if(p1[strlen(p1) - 1] == '/') p1[strlen(p1) - 1] = '\0';
 
     char p2[strlen(sp2.path) + 2];
     memset(p2,0,strlen(sp2.path) + 2);
     sprintf(p2,"/%s",sp2.path);
+    if(p2[strlen(p2) - 1] == '/') p2[strlen(p2) - 1] = '\0';
     execlp("cp","cp",p1,p2,NULL);
   }
 
@@ -469,22 +469,4 @@ int readFileWritePipe(struct special_path sp, int tar, int pipe_fd){
     close(fd); close(pipe_fd);
   }
   return 0;
-}
-
-int cdTo(char *path, char* last_arg){
-  char* s = pathminus(path,last_arg);
-  if(cd(s) < 0){ return -1; }
-  free(s);
-  return 0;
-}
-
-char *tarpathconcat(char *arg){
-  int off = (arg[0] == '/')? 1 : 0;
-  if(strlen(getenv("TARPATH")) <= 0) return arg + off;
-  char *s = malloc(sizeof(char) * (strlen(getenv("TARPATH")) + strlen(arg) + ((off + 1)%2) + 1));
-  memset(s,'\0',strlen(getenv("TARPATH")) + strlen(arg) - off + 1);
-  strcat(s,getenv("TARPATH"));
-  strcat(s,arg + off);
-  strcat(s,"\0");
-  return s;
 }

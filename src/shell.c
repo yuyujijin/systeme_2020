@@ -80,7 +80,7 @@ int main(){
 
     free(line);
 
-    if(strcmp(args[0],"exit") == 0){ backslashn = 0; break; }
+    if(strcmp(args[0],"exit") == 0){ free(args); backslashn = 0; break; }
 
     /* specific case for cd, because we do not execute it */
     if(strcmp(args[0],"cd") == 0){
@@ -97,6 +97,7 @@ int main(){
       default : wait(&w); break;
     }
 
+    // Tout les mots de args sont issues d'un strtok, pas besoin de free
     free(args);
   }
 
@@ -132,13 +133,13 @@ char *read_line(){
 char** str_cut(char *input_str, char *tokens, int* argc){
   *argc = 0;
 
-  int i;
-  char *s = strdup(input_str);
-  // On stock l'adresse pour le futur free
-  char *adr = s;
-  // On compte le nombre d'espace pour allouer un tableau de bonne taille
-  for (i = 2; s[i]; s[i] == ' ' ? i++ : *s++);
-  free(adr);
+  int i = 2;
+  
+  for(unsigned int j = 0; j < strlen(input_str); j++){
+    for(unsigned int k = 0; k < strlen(tokens); k++){
+      if(input_str[j] == tokens[k]){ i++; break; }
+    }
+  }
 
   char **words = (char **) malloc(sizeof(char*) * i);
   if(words == NULL) return NULL;
