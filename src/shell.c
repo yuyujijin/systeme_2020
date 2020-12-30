@@ -212,7 +212,7 @@ int execute_pipe_cmd(int argc, char **argv){
       dup2(oldstdin,STDIN_FILENO);
       write(STDIN_FILENO,s,strlen(s));
       exit(-1);
-      default : close(pipefds[i][1]); close(pipefds[i-1][0]); waitpid(r,&w,0); break;
+    default : close(pipefds[i][1]); if(i > 0) close(pipefds[i-1][0]); waitpid(r,&w,0); break;
     }
   }
 
