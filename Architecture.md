@@ -64,6 +64,7 @@ Si c'est le cas.
 ### rm
 
 ### mv
+  Si on a un fichier normal on applique le vrai mv dessus
 
   On appelle cmds/cp -r [argv] , ce qui va copier nos fichier ou dossier dans la destination( dernier arguments)
 
