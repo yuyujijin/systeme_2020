@@ -1,5 +1,7 @@
 #include "useful.h"
 
+#define MAX_SIZE 256
+
 char* path_simplifier(char* path){
   /* words will act as a lifo structure */
   char *words[64];
@@ -44,6 +46,7 @@ char* path_simplifier(char* path){
 
   for(int i = 0; i < size; i++){
     strcat(s,words[i]);
+    free(words[i]);
     if(i < size - 1) strcat(s,"/");
   }
 
@@ -68,7 +71,9 @@ void freeSpecialPath(struct special_path sp){
 }
 
 char *getRealPath(char *path){
-  char *pwd = getcwd(NULL,0);
+  char pwd[MAX_SIZE];
+  memset(pwd,0,MAX_SIZE);
+  getcwd(pwd,MAX_SIZE);
   char *tarname = getenv("TARNAME");
   char *tarpath = getenv("TARPATH");
   char *s = malloc(strlen(pwd) + strlen(tarname) + strlen(tarpath) + strlen(path) + 4);

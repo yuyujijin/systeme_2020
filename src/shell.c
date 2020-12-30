@@ -57,9 +57,12 @@ int main(){
   setenv("TARPATH","",1);
   setenv("TARNAME","",1);
 
-  char tarcmdspath[strlen(getcwd(NULL,0)) + strlen("/cmds")];
-  memset(tarcmdspath,0,strlen(getcwd(NULL,0)) + strlen("/cmds"));
-  sprintf(tarcmdspath,"%s/cmds",getcwd(NULL,0));
+  char cwd[MAX_SIZE];
+  memset(cwd,0,MAX_SIZE);
+  getcwd(cwd,MAX_SIZE);
+  char tarcmdspath[strlen(cwd) + strlen("/cmds")];
+  memset(tarcmdspath,0,strlen(cwd) + strlen("/cmds"));
+  sprintf(tarcmdspath,"%s/cmds",cwd);
 
   setenv("TARCMDSPATH",tarcmdspath,1);
 
@@ -80,7 +83,7 @@ int main(){
 
     free(line);
 
-    if(strcmp(args[0],"exit") == 0){ free(args); backslashn = 0; break; }
+    if(strcmp(args[0],"exit") == 0){ free(args[0]); free(args); backslashn = 0; break; }
 
     /* specific case for cd, because we do not execute it */
     if(strcmp(args[0],"cd") == 0){
@@ -97,7 +100,9 @@ int main(){
       default : wait(&w); break;
     }
 
+    // args[0] est le pointeur pour tout les args[i] (issues d'un strtok)
     // Tout les mots de args sont issues d'un strtok, pas besoin de free
+    free(args[0]);
     free(args);
   }
 
@@ -109,13 +114,15 @@ int main(){
 
 void printcwd(){
   char bgnline[MAX_SIZE];
-  char *cwd = getcwd(NULL, 0);
+  memset(bgnline,0,MAX_SIZE);
+  // On recupère le cwd (taille / 2 car plus petit)
+  char cwd[MAX_SIZE / 2];
+  memset(cwd,0,MAX_SIZE / 2);
+  getcwd(cwd,MAX_SIZE / 2);
   char *separator = (strlen(getenv("TARNAME")) > 0)? "/" : "";
   sprintf(bgnline,"%s%s%s:%s%s%s%s%s%s%s$ ",BOLDGREEN,getlogin(),RESET,BOLDBLUE,cwd,separator,getenv("TARNAME"),separator,getenv("TARPATH"),RESET);
 
   write(STDIN_FILENO, bgnline, strlen(bgnline));
-
-  free(cwd);
 }
 
 char *read_line(){
@@ -152,6 +159,7 @@ char** str_cut(char *input_str, char *tokens, int* argc){
     words[(*argc)] = NULL;
     word = strtok(NULL,tokens);
   }
+  free(word);
   (*argc)++;
   return words;
 }
@@ -217,6 +225,7 @@ int execute_pipe_cmd(int argc, char **argv){
   }
 
   for(int i = 0; i < nbr; i++){ close(pipefds[i][0]); close(pipefds[i][1]); }
+  for(int i = 0; i < argc; i++) free(argv[i]);
   return 1;
 }
 
@@ -250,11 +259,15 @@ int execute_redirection(int argc, char **argv){
         struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
         if(ph == NULL){
+	  free(ph);
+	  freeSpecialPath(sp);
           perror("impossible d'ouvrir le fichier.\n");
           return -1;
         }
 
         if(ph->typeflag == '5'){
+	  free(ph);
+	  freeSpecialPath(sp);
           perror("est un dossier.");
           return -1;
         }
@@ -287,20 +300,23 @@ int execute_redirection(int argc, char **argv){
           // Si il existe, et que c'est un dossier -> erreur
           if(stat(argv[i+1],&statbuf) != -1){
             if(S_ISDIR(statbuf.st_mode)){
+	      freeSpecialPath(sp);
               perror("est un dossier.");
               return -1;
             }
           }
           int stdin = open(argv[i+1], O_RDONLY, 0644);
           if(stdin < 0) {
-              perror("impossible d'ouvrir le fichier.\n");
-              return -1;
+             perror("impossible d'ouvrir le fichier.\n");
+	     freeSpecialPath(sp);
+             return -1;
           }
           dup2(stdin, STDIN_FILENO);
           close(stdin);
-        }
-        i++;
-        continue;
+      }
+      freeSpecialPath(sp);
+      i++;
+      continue;
     }
 
     /*
@@ -326,6 +342,8 @@ int execute_redirection(int argc, char **argv){
         struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
         if(ph != NULL && ph->typeflag == '5'){
+	  free(ph);
+	  freeSpecialPath(sp);
           perror("est un dossier.");
           return -1;
         }
@@ -361,12 +379,14 @@ int execute_redirection(int argc, char **argv){
         // Si il existe, et que c'est un dossier -> erreur
         if(stat(argv[i+1],&statbuf) != -1){
           if(S_ISDIR(statbuf.st_mode)){
+	    freeSpecialPath(sp);
             perror("est un dossier.");
             return -1;
           }
         }
         int stdout = open(argv[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (stdout < 0) {
+	  freeSpecialPath(sp);
             perror("impossible de créer le fichier.\n");
             return -1;
         }
@@ -374,6 +394,7 @@ int execute_redirection(int argc, char **argv){
         if(!strcmp(argv[i], "2>")) dup2(stdout, STDERR_FILENO);
         close(stdout);
       }
+      freeSpecialPath(sp);
       i++;
       continue;
     }
@@ -398,11 +419,15 @@ int execute_redirection(int argc, char **argv){
         struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
         if(ph == NULL){
+	  free(ph);
+	  freeSpecialPath(sp);
           perror("impossible d'ouvrir le fichier.\n");
           return -1;
         }
 
         if(ph->typeflag == '5'){
+	  free(ph);
+	  freeSpecialPath(sp);
           perror("est un dossier.");
           return -1;
         }
@@ -435,12 +460,14 @@ int execute_redirection(int argc, char **argv){
         // Si il existe, et que c'est un dossier -> erreur
         if(stat(argv[i+1],&statbuf) != -1){
           if(S_ISDIR(statbuf.st_mode)){
+	    freeSpecialPath(sp);
             perror("est un dossier.");
             return -1;
           }
         }
         int concat = open(argv[i + 1], O_CREAT | O_RDWR | O_APPEND, 0644);
         if (concat < 0) {
+	  freeSpecialPath(sp);
             perror("impossible de concatener au fichier.\n");
             return -1;
         }
@@ -449,6 +476,7 @@ int execute_redirection(int argc, char **argv){
 
         close(concat);
       }
+      freeSpecialPath(sp);
       i++;
       continue;
     }

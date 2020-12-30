@@ -22,6 +22,7 @@ int ls(int argc, char **argv){
     if(!strcmp(argv[i],"-l")) continue;
     char *p = getRealPath(argv[i]);
     special_path sp = special_path_maker(p);
+    free(p);
     if(strlen(sp.tar_path) > 0) sp.tar_path[strlen(sp.tar_path) - 1] = '\0';
 
     /* le tar a ouvrir est a l'adresse "/" + pwd + nom du tar */
@@ -36,20 +37,21 @@ int ls(int argc, char **argv){
           struct posix_header *ph = getHeader(tarlocation,sp.tar_path);
 
           if(ph == NULL){
+	    free(ph);
             perror("impossible d'ouvrir le fichier.\n");
             return -1;
           }
 
           // Si c'est un fichier on print son nom
           if(ph->typeflag == '0'){
+	    free(ph);
             write(STDOUT_FILENO,argv[i],strlen(argv[i]));
             write(STDOUT_FILENO,"\n",1);
             continue;
           }
         }
-
+        
         ls_tar(tarlocation,sp.tar_path,L);
-
       }else{
         int r;
         r = fork();
@@ -64,8 +66,9 @@ int ls(int argc, char **argv){
           exit(-1);
           default : waitpid(r,NULL,0); break;
         }
-      }
-      if(argc - L > 1 && i < argc - 1) write(STDOUT_FILENO,"\n",1);
+    }
+    if(argc - L > 1 && i < argc - 1) write(STDOUT_FILENO,"\n",1);     
+    freeSpecialPath(sp);
     }
     return 0;
   }
