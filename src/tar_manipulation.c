@@ -565,15 +565,18 @@ struct posix_header** posix_header_from_tarFile(char *tarname, char *path){
 }
 
 int existsTP(char *filename){
+  //error if we're not on a tar
   if(!strlen(getenv("TARNAME"))) return -1;
-  if(!strcmp(filename,".") || !strcmp(filename,"..")) return 1;
 
+  //if filename == . or ..
+  if(!strcmp(filename,".") || !strcmp(filename,"..")) return 1;
+  
   char s[strlen(filename) + strlen(getenv("TARPATH")) + 1];
   memset(s,0,strlen(filename) + strlen(getenv("TARPATH")) + 1);
   strcat(s,getenv("TARPATH"));
-  if(strlen(s)) strcat(s,"/");
+  //if(strlen(s)) strcat(s,"/");
   strcat(s,filename);
-
+  
   return exists(getenv("TARNAME"),s);
 }
 
@@ -649,11 +652,53 @@ int file_exists_in_tar(char* path, char* name){
     {
       return 0;
     }
+  
   while(read(fd, &hd, sizeof(struct posix_header))){
     if(hd.name[0]=='\0')
       return 0;
     if(strcmp(name,hd.name)==0)  { close(fd); return 1;}
 
+    unsigned int filesize;
+    sscanf(hd.size,"%o", &filesize);
+    int s = (filesize + 512 - 1)/512;
+    lseek (fd, s* BLOCKSIZE, SEEK_CUR);
+  }
+  return 0;
+}
+
+int is_empty (char *tarpath, char *name)
+{
+  struct posix_header hd;
+  int fd;
+
+  fd = open(tarpath,O_RDONLY);
+
+  if(fd<0)
+    {
+      close (fd);
+      return -1;
+    }
+
+  //count of nb of files path/name/xxx
+  // if > 1 we can't erase dir, it's not empty
+  unsigned int count = 0;
+  while(read(fd, &hd, sizeof(struct posix_header))){
+    //verify that dir name is empty
+    //that doesn't exist file name/xxx
+    if (strlen (hd.name) >= strlen (name))
+      {
+	for (unsigned int i = 0; i < strlen (name) ; i ++)
+	  {
+	    if (hd.name[i] != name[i]) break;
+	    else if (i == strlen (name) - 1)
+	      count ++;
+	  }
+	if (count > 1)
+	  {
+	    close (fd);
+	    return 0;
+	  }
+      }
     int filesize;
     sscanf(hd.size,"%d", &filesize);
     int s = (filesize + 512 - 1)/512;
@@ -661,5 +706,27 @@ int file_exists_in_tar(char* path, char* name){
     read(fd, temp, s * BLOCKSIZE);
     free(temp);
   }
-  return 0;
+  close (fd);
+  return 1;
+}
+
+//return 1 is the par path/ is empty
+//else 0
+int is_empty_tar (char* path)
+{
+  int fd = open(path, O_RDONLY);
+  struct posix_header hd;
+
+  if(fd<0)
+    {
+      close (fd);
+      return -1;
+    }
+
+  int ret = 1;
+  if (read(fd, &hd, sizeof(struct posix_header)))
+    ret = (hd.name[0] == '\0');
+  close(fd);
+  return ret;
+
 }

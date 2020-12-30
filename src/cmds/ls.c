@@ -14,6 +14,53 @@ int ls(int argc, char **argv){
     }
   }
 
+  /*<<<<<<< HEAD
+  switch (fork()) {
+    case -1 : perror("fork");exit(EXIT_FAILURE);
+    case 0 :
+    for(int i = 1; i < argc; i++){
+      if(!strcmp(argv[i],"-l")) continue;
+      if(argc - L > 2){
+        char name[256];
+        memset(name,0,256);
+        sprintf(name,"%s:\n",argv[i]);
+        write(STDOUT_FILENO,name,strlen(name));
+      }
+      char *last_arg;
+      switch (fork()) {
+        case -1 : perror("fork");exit(EXIT_FAILURE);
+        case 0 :
+        // on tente d'acceder au chemin, sans le dernier argument
+        // si il est non accessible -> erreur
+        // ensuite, on verifie si le dernier arg existe dans le contexte actuel
+        // sinon, erreur ->
+        // puis on essaie d'y acceder, si ça fonctionne, c'est un dossier
+        // sinon c'est un dossier
+        last_arg = getLastArg(argv[i]);
+
+        // si le dernier argument != argv[i] (juste un fichier simple)
+        if(strcmp(argv[i],last_arg))if(cd(pathminus(argv[i],last_arg)) < 0) exit(EXIT_FAILURE);
+
+        // on vérifie si le fichier existe (dans les 2 contextes)
+        if(strlen(getenv("TARNAME"))){
+          if(existsTP(last_arg) <= 0)
+	    {
+	      errno = ENOENT;
+	      perror("ls");
+	      exit(EXIT_FAILURE);
+	    }
+        }else{
+          int fd = open(last_arg,O_RDONLY);
+          if(fd < 0) exit(EXIT_FAILURE);
+          close(fd);
+        }
+
+        // si on peut y acceder
+        if(cd(last_arg) > 0){
+          if(strlen(getenv("TARNAME"))) return ls_tar(L);
+          if(L) execlp("ls","ls","-l",NULL);
+          execlp("ls","ls",NULL);
+	  =======*/
   for(int i = 1; i < argc; i++){
     if(argc - L - 1 > 1){
       write(STDOUT_FILENO,argv[i],strlen(argv[i]));
@@ -63,6 +110,7 @@ int ls(int argc, char **argv){
           }
           exit(-1);
           default : waitpid(r,NULL,0); break;
+	    //>>>>>>> develop_linkage
         }
       }
       if(argc - L > 1 && i < argc - 1) write(STDOUT_FILENO,"\n",1);
