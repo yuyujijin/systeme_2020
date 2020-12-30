@@ -1,6 +1,17 @@
 #include "unit_test.h"
 
-int cd_test_length = 3;
+void execute_cmd(char **argv){
+  /* on récupère le path ou sont stockés les fonctions sur les tars */
+  char *pathname = getenv("TARCMDSPATH");
+  /* on y concatene la commande voulue */
+  char pathpluscmd[strlen(pathname) + 1 + strlen(argv[0])];
+  memset(pathpluscmd,0,strlen(pathname) + 1 + strlen(argv[0]));
+  sprintf(pathpluscmd,"%s/%s",pathname,argv[0]);
+
+  execv(pathpluscmd,argv);
+}
+
+int cd_test_length = 1;
 char *cd_test[] = {"test/doggy.tar"};
 void cd_uni_test(){
   for(int i = 0; i < cd_test_length; i++){
@@ -8,8 +19,9 @@ void cd_uni_test(){
       case -1 : return;
       case 0 :
         cd(cd_test[i]);
-        execlp("cmds/pwd","pwd",NULL);
-        exit(1);
+	char *pwds[2] = {"pwd",NULL};
+	execute_cmd(pwds);
+        exit(-1);
       default :
         wait(NULL);
         break;
@@ -18,12 +30,12 @@ void cd_uni_test(){
 }
 
 
-char *ls_test[] = {"cmds/ls","-l","test/mammouth.tar/cmds",NULL};
+char *ls_test[] = {"ls","-l","test/mammouth.tar/cmds",NULL};
 void ls_uni_test(){
   switch(fork()){
     case -1 : return;
     case 0 :
-      execvp("cmds/ls",ls_test);
+      execute_cmd(ls_test);
       exit(1);
     default :
     wait(NULL);
@@ -31,12 +43,12 @@ void ls_uni_test(){
   }
 }
 
-char *cp_test[] = {"cmds/cp","-r","test/biggyWallas.tar","test/Popeye",NULL};
+char *cp_test[] = {"cp","-r","test/bigWallas.tar","test/Popeye",NULL};
 void cp_uni_test(){
   switch(fork()){
     case -1 : return;
     case 0 :
-      execvp("cmds/cp",cp_test);
+      execute_cmd(cp_test);
       exit(1);
     default :
       wait(NULL);
@@ -44,12 +56,12 @@ void cp_uni_test(){
   }
 }
 
-char *cat_test[] = {"cmds/cat","test/catTest.tar/testCat/cat",NULL};
+char *cat_test[] = {"cat","test/catTest.tar/testCat/cat",NULL};
 void cat_uni_test(){
   switch(fork()){
     case -1 : return;
     case 0 :
-      execvp("cmds/cat",cat_test);
+      execute_cmd(cat_test);
       exit(1);
     default :
     wait(NULL);
@@ -57,12 +69,12 @@ void cat_uni_test(){
   }
 }
 
-char *rmdir_test[] = {"cmds/rmdir","test/rmdir.tar/testRmdir","test/rmdir.tar/cmds",NULL};
+char *rmdir_test[] = {"rmdir","test/rmdir.tar/testRmdir","test/rmdir.tar/cmds",NULL};
 void rmdir_uni_test(){
   switch(fork()){
     case -1 : return;
     case 0 :
-      execvp("cmds/rmdir",rmdir_test);
+      execute_cmd(rmdir_test);
       exit(1);
     default :
     wait(NULL);
@@ -70,12 +82,12 @@ void rmdir_uni_test(){
   }
 }
 
-char *mkdir_test[] = {"cmds/mkdir","test/new.tar","test/old.tar/test/",NULL};
+char *mkdir_test[] = {"mkdir","test/new.tar","test/old.tar/test/",NULL};
 void mkdir_uni_test(){
   switch(fork()){
     case -1 : return;
     case 0 :
-      execvp("cmds/mkdir",mkdir_test);
+      execute_cmd(mkdir_test);
       exit(1);
     default :
     wait(NULL);
@@ -84,12 +96,12 @@ void mkdir_uni_test(){
 }
 
 
-char *rm_test[] = {"cmds/rm","-r","test/mugiwara.tar/cmds","test/mugiwara.tar",NULL};
+char *rm_test[] = {"rm","-r","test/mugiwara.tar/cmds","test/mugiwara.tar",NULL};
 void rm_uni_test(){
   switch(fork()){
     case -1 : return;
     case 0 :
-      execvp("cmds/rm",rm_test);
+      execute_cmd(rm_test);
       exit(1);
     default :
     wait(NULL);
@@ -98,12 +110,12 @@ void rm_uni_test(){
 }
 
 
-char *mv_test[] = {"cmds/mv","test/gigaHallucinant.tar","test/omegaDestroyer",NULL};
+char *mv_test[] = {"mv","test/gigaHallucinant.tar","test/omegaDestroyer",NULL};
 void mv_uni_test(){
   switch(fork()){
     case -1 : return;
     case 0 :
-      execvp("cmds/mv",mv_test);
+      execute_cmd(mv_test);
       exit(1);
     default :
     wait(NULL);
@@ -112,261 +124,45 @@ void mv_uni_test(){
 }
 
 void createTestFolder(){
-  //TEST FOLDER
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-    execlp("rm","rm","-r","-f","test",NULL);
-    exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-
-
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-    execlp("mkdir","mkdir","test",NULL);
-    exit(1);
-    default :
-    wait(NULL);
-    break;
-  }
-
-
-  //CD file
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-      execlp("tar","tar","cvf","test/doggy.tar","cmds",NULL);
-      exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-
-  //LS FILE
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-      execlp("tar","tar","cvf","test/mammouth.tar","cmds",NULL);
-      exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-
-  //CP FILE
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-      execlp("tar","tar","cvf","test/biggyWallas.tar","cmds",NULL);
-      exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-
-  //CAT FILE
-
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-    execlp("mkdir","mkdir","testCat",NULL);
-    exit(1);
-    default :
-    wait(NULL);
-    break;
-  }
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-      {
-        int fd=open("testCat/cat",O_WRONLY|O_CREAT|O_TRUNC,0644);
-        if(fd<0)exit(-1);
-        if(write(fd,"miaou miaouu",strlen("miaou miaouu"))<0)exit(-1);
-        exit(1);
-      }
-    default :
-      wait(NULL);
-      break;
-  }
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-      execlp("tar","tar","cvf","test/catTest.tar","testCat",NULL);
-      exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-
-  //RMDIR FILE
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-    execlp("mkdir","mkdir","testRmdir",NULL);
-    exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-    execlp("tar","tar","cvf","test/rmdir.tar","cmds","testRmdir",NULL);
-    exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-
-  //MKDIR FILE
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-    execlp("tar","tar","cvf","test/old.tar","cmds",NULL);
-    exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-
-  //RM FILE
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-    execlp("tar","tar","cvf","test/mugiwara.tar","cmds",NULL);
-    exit(1);
-    default :
-      wait(NULL);
-      break;
-  }
-
-  //MV FILE
-  switch (fork()) {
-    case -1:exit(-1);
-    case 0:
-    execlp("tar","tar","cvf","test/gigaHallucinant.tar","cmds",NULL);
-    exit(1);
-    default :
-      wait(NULL);
-      break;
+  switch(fork()){
+  case -1 : return;
+  case 0 : execlp("bash","bash","test_creator.sh",NULL); exit(-1);
+  default : wait(NULL); break;
   }
 }
 
+#define MAX_SIZE 256
 
 ////MAIN/////
 int main(){
-  char tarcmdspath[strlen(getcwd(NULL,0)) + strlen("/cmds")];
-  memset(tarcmdspath,0,strlen(getcwd(NULL,0)) + strlen("/cmds"));
-  sprintf(tarcmdspath,"%s/cmds",getcwd(NULL,0));
+  char cwd[MAX_SIZE];
+  memset(cwd,0,MAX_SIZE);
+  getcwd(cwd,MAX_SIZE);
+  char tarcmdspath[strlen(cwd) + strlen("/cmds")];
+  memset(tarcmdspath,0,strlen(cwd) + strlen("/cmds"));
+  sprintf(tarcmdspath,"%s/cmds",cwd);
 
   setenv("TARCMDSPATH",tarcmdspath,1);
+  setenv("TARPATH","",1);
+  setenv("TARNAME","",1);
 
   createTestFolder();
 
   write(1,"\nTEST POUR CD : \n",strlen("\nTEST POUR CD : \n"));
-  switch (fork()) {
-    case -1:return -1;
-    case  0:
-      setenv("TARNAME","",1);
-      setenv("TARPATH","",1);
-      cd_uni_test();
-      exit(1);
-    default:
-      wait(NULL);
-      break;
-  }
-
+  cd_uni_test();
   write(1,"\nTEST POUR LS : \n",strlen("\nTEST POUR LS : \n"));
-  switch (fork()) {
-    case -1:return -1;
-    case  0:
-      setenv("TARNAME","",1);
-      setenv("TARPATH","",1);
-      ls_uni_test();
-      exit(1);
-    default:
-      wait(NULL);
-      break;
-  }
-
+  ls_uni_test();
   write(1,"\nTEST POUR CAT : \n",strlen("\nTEST POUR CAT : \n"));
-  switch (fork()) {
-    case -1:return -1;
-    case  0:
-      setenv("TARNAME","",1);
-      setenv("TARPATH","",1);
-      cat_uni_test();
-      exit(1);
-    default:
-      wait(NULL);
-      break;
-  }
-
+  cat_uni_test();
   write(1,"\nTEST POUR CP : \n",strlen("\nTEST POUR CP : \n"));
-  switch (fork()) {
-    case -1:return -1;
-    case  0:
-      setenv("TARNAME","",1);
-      setenv("TARPATH","",1);
-      cp_uni_test();
-      exit(1);
-    default:
-      wait(NULL);
-      break;
-  }
-
+  cp_uni_test();
   write(1,"\nTEST POUR RMDIR : \n",strlen("\nTEST POUR RMDIR : \n"));
-  switch (fork()) {
-    case -1:return -1;
-    case  0:
-      setenv("TARNAME","",1);
-      setenv("TARPATH","",1);
-      rmdir_uni_test();
-      exit(1);
-    default:
-      wait(NULL);
-      break;
-  }
-
+  rmdir_uni_test();
   write(1,"\nTEST POUR MKDIR : \n",strlen("\nTEST POUR MKDIR : \n"));
-  switch (fork()) {
-    case -1:return -1;
-    case  0:
-      setenv("TARNAME","",1);
-      setenv("TARPATH","",1);
-      mkdir_uni_test();
-      exit(1);
-    default:
-      wait(NULL);
-      break;
-  }
+  mkdir_uni_test();
   write(1,"\nTEST POUR RM : \n",strlen("\nTEST POUR RM : \n"));
-  switch (fork()) {
-    case -1:return -1;
-    case  0:
-      setenv("TARNAME","",1);
-      setenv("TARPATH","",1);
-      rm_uni_test();
-      exit(1);
-    default:
-      wait(NULL);
-      break;
-  }
+  rm_uni_test();
   write(1,"\nTEST POUR MV : \n",strlen("\nTEST POUR MV : \n"));
-  switch (fork()) {
-    case -1:return -1;
-    case  0:
-      setenv("TARNAME","",1);
-      setenv("TARPATH","",1);
-      mv_uni_test();
-      exit(1);
-    default:
-      wait(NULL);
-      break;
-  }
+  mv_uni_test();
 
 }

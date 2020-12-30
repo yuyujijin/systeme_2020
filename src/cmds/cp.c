@@ -140,7 +140,7 @@ int cp_r(char **argv){
   if(strlen(sp1.tar_name) > 0){
     int fd = open(p1,O_RDONLY);
     if(fd < 0)
-    { perror("erreur lors de l'ouverture du tar.\n"); return -1; }
+      { perror("erreur lors de l'ouverture du tar.\n"); return -1; }
 
     char path[strlen(sp1.tar_path) + 2];
     memset(path,0,strlen(sp1.tar_path) + 2);
@@ -219,7 +219,8 @@ void createDir(char **argv){
   sprintf(pathpluscmd,"%s/%s",pathname,"mkdir");
 
   /* et on exec */
-  execl(pathpluscmd,argv[1]);
+  char *args[3] = {"mkdir",argv[1],NULL};
+  execv(pathpluscmd,args);
   exit(-1);
 }
 
