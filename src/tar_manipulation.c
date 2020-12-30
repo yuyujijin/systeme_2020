@@ -563,9 +563,12 @@ struct posix_header** posix_header_from_tarFile(char *tarname, char *path){
 }
 
 int existsTP(char *filename){
+  //error if we're not on a tar
   if(!strlen(getenv("TARNAME"))) return -1;
-  if(!strcmp(filename,".") || !strcmp(filename,"..")) return 1;
 
+  //if filename == . or ..
+  if(!strcmp(filename,".") || !strcmp(filename,"..")) return 1;
+  
   char s[strlen(filename) + strlen(getenv("TARPATH")) + 1];
   memset(s,0,strlen(filename) + strlen(getenv("TARPATH")) + 1);
   strcat(s,getenv("TARPATH"));
