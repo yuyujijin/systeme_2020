@@ -58,10 +58,19 @@ Si c'est le cas.
 ### cp
 
 ### mkdir
+On commence par récupérer le vrai chemin, qui prend en compte les . et les .. .
+Si on est dans un tar, on renvoie une exception si jamais on veut créer un tar imbriqué. Si ça n'est pas le cas, on appelle `addDirTar(tarloction,tarpath)`, où tarlocation est l'endroit où se situe le tar et tarpath le chemin du repertoire à supprimer dans le tar. La fonction vérifie si le chemin existe déjà, et l'ajoute si ça n'est pas le cas.
 
 ### rmdir
+Comme précedemment, on commence par récupérer le vrai chemin et on utilise `special_path_maker ` pour récupérer les informations relatives au tar.
+Dans le cas ou rmdir pointe un .tar, qu'il sagisse d'un fichier .tar ou d'un répertoire (vide), on cherche à le supprimer. On fait donc appel à `rm -r`.
+Si le fichier n'est pas vide on renvoie une erreur.
+Dans le cas où le chemin ne pointe pas un .tar mais utilise un chemin qui passe par un .tar, on cherche à gérer les exceptions : si le chemin vise un fichier au lieu d'un répertoire, si le chemin n'existe pas, ou si le répertoire n'est  pas vide. Puis on supprime à l'aide de `rmTar`.
 
 ### rm
+On commence par récupérer le vrai chemin et on utilise `special_path_maker ` pour récupérer les informations relatives au tar.
+Si le chemin pointe un tar, et que l'option `-r` est précisée, on supprime le tar, sinon on renvoie une erreur.
+Dans `rm_tar`, si l'option `-r` n'est pas précisée, on fait appel à `rmTar`, sinon on recherche, dans les fichiers du tar, ceux qui ont un préfixe identique au nom de répertoire que l'on veut supprimer. Si oui, on les supprime.
 
 ### mv
   Si on a un fichier normal on applique le vrai mv dessus
