@@ -30,15 +30,15 @@ int ls(int argc, char **argv){
         // sinon c'est un dossier
         last_arg = getLastArg(argv[i]);
 
-	write (1, "1\n", 2);
         // si le dernier argument != argv[i] (juste un fichier simple)
         if(strcmp(argv[i],last_arg))if(cd(pathminus(argv[i],last_arg)) < 0) exit(EXIT_FAILURE);
 
-	write (2, "2\n", 2);
         // on vérifie si le fichier existe (dans les 2 contextes)
         if(strlen(getenv("TARNAME"))){
           if(existsTP(last_arg) <= 0)
-	    {perror("ls");
+	    {
+	      errno = ENOENT;
+	      perror("ls");
 	      exit(EXIT_FAILURE);
 	    }
         }else{
@@ -47,14 +47,12 @@ int ls(int argc, char **argv){
           close(fd);
         }
 
-	write (1, "3\n", 2);
         // si on peut y acceder
         if(cd(last_arg) > 0){
           if(strlen(getenv("TARNAME"))) return ls_tar(L);
           if(L) execlp("ls","ls","-l",NULL);
           execlp("ls","ls",NULL);
         }
-	write (1, "4\n", 2);
         // sinon on print le nom (non dossier)
         write(STDOUT_FILENO,last_arg,strlen(last_arg));
         write(STDOUT_FILENO,"\n",1);

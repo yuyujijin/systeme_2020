@@ -91,7 +91,6 @@ int rmdir_tar(char *argv)
       exit (EXIT_FAILURE);
     }
 
-  write(1, sp.tar_path, strlen(sp.tar_path));
   if(! file_exists_in_tar(path,sp.tar_path))
     {
       errno=ENOENT;

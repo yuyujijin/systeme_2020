@@ -572,9 +572,9 @@ int existsTP(char *filename){
   char s[strlen(filename) + strlen(getenv("TARPATH")) + 1];
   memset(s,0,strlen(filename) + strlen(getenv("TARPATH")) + 1);
   strcat(s,getenv("TARPATH"));
-  if(strlen(s)) strcat(s,"/");
+  //if(strlen(s)) strcat(s,"/");
   strcat(s,filename);
-
+  
   return exists(getenv("TARNAME"),s);
 }
 
