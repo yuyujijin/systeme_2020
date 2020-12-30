@@ -7,16 +7,14 @@
 //#include "../tar.h"
 #include "../tar_manipulation.h"
 
-int last_is_tar(const char* argv);
+int last_is_tar(char* argv);
 
-int main(int argc, const char** argv);
+int main(int argc, char** argv);
 
 //call rmdir id we're in a regular path
 //else calls rmdir path
-int rmdir_call(int argc,const char** argv);
+int rmdir_call(int argc, char** argv);
 
-int last_is_tar(const char* argv);
-
-int rmdir_tar(const char *argv, int tar_index);
+int rmdir_tar(char *argv);
 
 #endif

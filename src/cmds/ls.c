@@ -13,8 +13,8 @@ int ls(int argc, char **argv){
       exit(-1);
     }
   }
-
   for(int i = 1; i < argc; i++){
+
     if(argc - L - 1 > 1){
       write(STDOUT_FILENO,argv[i],strlen(argv[i]));
       write(STDOUT_FILENO,":\n",2);
@@ -41,7 +41,6 @@ int ls(int argc, char **argv){
             perror("impossible d'ouvrir le fichier.\n");
             return -1;
           }
-
           // Si c'est un fichier on print son nom
           if(ph->typeflag == '0'){
 	    free(ph);
