@@ -1,17 +1,11 @@
-**RENDU N°1:**
+**RENDU N°2:**
 
-Le projet se teste sur la branche develop, dans le fichier src/ (ce n'est pas la meilleure option, c'est une erreur d'attention, ce sera changer). On le compile avec "make". Pour l'exécuter, on utilise la commande "./shell" qui ouvre un terminal.
+Le projet se teste sur la branche master, dans le fichier src/. Pour que la compilation se déroule correctement, il faut les packages usuels, à installer à l'aide de `sudo apt update`, puis `sudo apt install build-essential`.
 
-Les commandes disponibles jusqu'à présent sont les commandes "pwd", "ls", "cat", "mkdir" et "cd".
+Le projet compile avec `make`. Pour l'exécuter, on utilise la commande `./shell` qui ouvre un terminal. 
 
-La commande pwd écrit le chemin actuel (arborescence tar incluses) dans la sortie standard.
+Les commandes disponibles sont celles demandées explicitement dans le sujet.
 
-La commande ls fonctionne normalement qu'on soit dans un tarball ou une arborescence normal. L'option -l marche pour les tarballs. On peut regarder a l'interieur d'un tar depuis l'exterieur
+Une série de tests primaires a été rédigée et peut être exécutée à l'aide `./unit_test` .
 
-La commande cat fonctionne normalement qu'on soit dans un tarball ou une arborescence normal. On peut regarder a l'interieur d'un tar depuis l'exterieur.
-
-La commande cd permet de parcourir tout types d'arborescences (normal, tarball, arborescence dans tarball). "cd ~" ramène au homedir.
-
-La commande mkdir fonctionne normalement qu'on soit dans un tarball ou une arborescence normal et permet de créer des fichiers à la fois dans des ".tar" et dans des fichiers lambda. Comme la commande mkdir originelle, elle vérifie que le dossier ne soit pas deja présent dans le ".tar" et que ce ".tar" soit bien une tarball et pas un dossier appelé "xxx.tar".
-
-Pour supprimer les executables ainsi que les fichier .o, on peut utiliser la commande "make cleanall".
+Pour supprimer les executables ainsi que les fichiers .o, on peut utiliser la commande "make cleanall".
